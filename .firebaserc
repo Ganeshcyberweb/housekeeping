@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "default": "445147658425",
+    "prod": "housekeeping-shift-planner"
+  },
+  "targets": {},
+  "etags": {}
+}
