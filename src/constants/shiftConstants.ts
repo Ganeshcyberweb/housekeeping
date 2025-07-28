@@ -1,7 +1,9 @@
 export type ShiftFormData = {
   date: string;
   shift: string;
-  staff: string;
+  staffId: string;
+  staffName: string;
+  roomIds: string[];
   rooms: string[];
   notes: string;
 };

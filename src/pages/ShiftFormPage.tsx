@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { collection, addDoc, Timestamp } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import Select from "../components/Select";
@@ -7,20 +7,25 @@ import Input from "../components/Input";
 import Button from "../components/Button";
 import DropdownCheckBox from "../components/DropdownCheckbox";
 import { useShiftsStore } from "../store/shiftsStore";
+import { useStaffStore } from "../store/staffStore";
+import { useRoomStore } from "../store/roomStore";
 import {
   type ShiftFormData,
   SHIFT_TYPES,
-  STAFF_LIST,
   ROOM_LIST,
 } from "../constants/shiftConstants";
 import { Save, Plus, X, Loader2 } from "lucide-react";
 
 const ShiftFormPage = () => {
   const { fetchShifts } = useShiftsStore();
+  const { staff, fetchStaff, addStaff } = useStaffStore();
+  const { rooms, fetchRooms } = useRoomStore();
   const [formData, setFormData] = useState<ShiftFormData>({
     date: "",
     shift: "",
-    staff: "",
+    staffId: "",
+    staffName: "",
+    roomIds: [],
     rooms: [],
     notes: "",
   });
@@ -29,9 +34,18 @@ const ShiftFormPage = () => {
   const [success, setSuccess] = useState(false);
   const [customStaff, setCustomStaff] = useState("");
   const [showCustomStaff, setShowCustomStaff] = useState(false);
-  const [customRoom, setCustomRoom] = useState("");
-  const [showCustomRoom, setShowCustomRoom] = useState(false);
-  const [roomList, setRoomList] = useState([...ROOM_LIST]);
+  // We'll use rooms directly from database, no need for custom room functionality
+  // since users can add rooms in the Room Management section
+
+  // Fetch staff and rooms data on component mount
+  useEffect(() => {
+    if (staff.length === 0) {
+      fetchStaff();
+    }
+    if (rooms.length === 0) {
+      fetchRooms();
+    }
+  }, [staff.length, fetchStaff, rooms.length, fetchRooms]);
 
   const handleInputChange = (field: keyof ShiftFormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -42,37 +56,63 @@ const ShiftFormPage = () => {
   const handleStaffSelection = (staffValue: string) => {
     if (staffValue === "custom") {
       setShowCustomStaff(true);
-      setFormData((prev) => ({ ...prev, staff: "" }));
+      setFormData((prev) => ({ ...prev, staffId: "", staffName: "" }));
     } else {
       setShowCustomStaff(false);
       setCustomStaff("");
-      setFormData((prev) => ({ ...prev, staff: staffValue }));
+      const selectedStaff = staff.find(s => s.id === staffValue);
+      if (selectedStaff) {
+        setFormData((prev) => ({ 
+          ...prev, 
+          staffId: selectedStaff.id, 
+          staffName: selectedStaff.name 
+        }));
+      }
     }
     setError(null);
     setSuccess(false);
   };
 
-  const handleCustomStaffSubmit = () => {
+  const handleCustomStaffSubmit = async () => {
     if (customStaff.trim()) {
-      setFormData((prev) => ({ ...prev, staff: customStaff.trim() }));
-      setShowCustomStaff(false);
+      try {
+        // Add the new staff member to the database
+        await addStaff({
+          name: customStaff.trim(),
+        });
+        
+        // Refresh staff list to get the new staff member with ID
+        await fetchStaff();
+        
+        // Find the newly added staff member
+        const newStaffMember = staff.find(s => s.name === customStaff.trim());
+        if (newStaffMember) {
+          setFormData((prev) => ({ 
+            ...prev, 
+            staffId: newStaffMember.id, 
+            staffName: newStaffMember.name 
+          }));
+        }
+        
+        setShowCustomStaff(false);
+        setCustomStaff("");
+      } catch (err) {
+        setError("Failed to add new staff member");
+      }
     }
   };
 
-  const handleAddCustomRoom = () => {
-    if (customRoom.trim() && !formData.rooms.includes(customRoom.trim())) {
-      // Add to room list if not exists
-      if (!roomList.includes(customRoom.trim())) {
-        setRoomList((prev) => [...prev, customRoom.trim()]);
-      }
-      // Add to selected rooms
-      setFormData((prev) => ({
-        ...prev,
-        rooms: [...prev.rooms, customRoom.trim()],
-      }));
-      setCustomRoom("");
-      setShowCustomRoom(false);
-    }
+  const handleRoomSelection = (selectedRoomIds: string[]) => {
+    const selectedRooms = selectedRoomIds.map(roomId => {
+      const room = rooms.find(r => r.id === roomId);
+      return room ? room.number : '';
+    }).filter(Boolean);
+    
+    setFormData((prev) => ({
+      ...prev,
+      roomIds: selectedRoomIds,
+      rooms: selectedRooms,
+    }));
     setError(null);
     setSuccess(false);
   };
@@ -80,21 +120,13 @@ const ShiftFormPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Determine the actual staff value for validation
-    const actualStaff =
-      showCustomStaff && customStaff.trim()
-        ? customStaff.trim()
-        : formData.staff;
+    // Handle custom staff if not yet added
+    if (showCustomStaff && customStaff.trim()) {
+      await handleCustomStaffSubmit();
+      return; // The form will be resubmitted after staff is added
+    }
 
-    // Determine the actual rooms for validation (include custom room if entered)
-    const actualRooms =
-      showCustomRoom &&
-      customRoom.trim() &&
-      !formData.rooms.includes(customRoom.trim())
-        ? [...formData.rooms, customRoom.trim()]
-        : formData.rooms;
-
-    // Validate with the actual values
+    // Validate with the form data
     if (!formData.date) {
       setError("Date is required");
       return;
@@ -103,33 +135,16 @@ const ShiftFormPage = () => {
       setError("Shift type is required");
       return;
     }
-    if (!actualStaff) {
+    if (!formData.staffId || !formData.staffName) {
       setError("Staff selection is required");
       return;
     }
-    if (actualRooms.length === 0) {
+    if (formData.roomIds.length === 0) {
       setError("At least one room must be selected");
       return;
     }
 
-    // Auto-add custom staff if they entered a name but didn't click "Add"
-    if (showCustomStaff && customStaff.trim()) {
-      setFormData((prev) => ({ ...prev, staff: customStaff.trim() }));
-      setShowCustomStaff(false);
-    }
-
-    // Auto-add custom room if they entered a name but didn't click "Add"
-    if (
-      showCustomRoom &&
-      customRoom.trim() &&
-      !formData.rooms.includes(customRoom.trim())
-    ) {
-      setFormData((prev) => ({
-        ...prev,
-        rooms: [...prev.rooms, customRoom.trim()],
-      }));
-      setShowCustomRoom(false);
-    }
+    // No need for custom room handling
 
     setLoading(true);
     setError(null);
@@ -138,8 +153,10 @@ const ShiftFormPage = () => {
       await addDoc(collection(db, "shifts"), {
         date: formData.date,
         shift: formData.shift,
-        staff: actualStaff,
-        rooms: actualRooms,
+        staffId: formData.staffId,
+        staffName: formData.staffName,
+        roomIds: formData.roomIds,
+        rooms: formData.rooms,
         notes: formData.notes,
         createdAt: Timestamp.now(),
       });
@@ -148,14 +165,14 @@ const ShiftFormPage = () => {
       setFormData({
         date: "",
         shift: "",
-        staff: "",
+        staffId: "",
+        staffName: "",
+        roomIds: [],
         rooms: [],
         notes: "",
       });
       setCustomStaff("");
       setShowCustomStaff(false);
-      setCustomRoom("");
-      setShowCustomRoom(false);
 
       // Refresh the shifts store to update admin dashboard
       fetchShifts();
@@ -219,10 +236,13 @@ const ShiftFormPage = () => {
           <Select
             id="staff-member"
             label="Staff Member"
-            value={showCustomStaff ? "custom" : formData.staff}
+            value={showCustomStaff ? "custom" : formData.staffId}
             onChange={handleStaffSelection}
             options={[
-              ...STAFF_LIST.map((staff) => ({ value: staff, label: staff })),
+              ...staff.map((staffMember) => ({ 
+                value: staffMember.id, 
+                label: `${staffMember.name}${staffMember.role ? ` (${staffMember.role})` : ''}` 
+              })),
               { value: "custom", label: "+ Add Custom Staff Member" },
             ]}
             placeholder="Select staff member"
@@ -265,9 +285,9 @@ const ShiftFormPage = () => {
             </div>
           )}
 
-          {formData.staff && !showCustomStaff && (
+          {formData.staffName && !showCustomStaff && (
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-              Selected: {formData.staff}
+              Selected: {formData.staffName}
             </p>
           )}
         </div>
@@ -277,58 +297,24 @@ const ShiftFormPage = () => {
           <DropdownCheckBox
             id="rooms"
             label="Rooms"
-            options={roomList.map((room) => ({ value: room, label: room }))}
-            selectedValues={formData.rooms}
-            onChange={(selectedRooms) =>
-              setFormData((prev) => ({ ...prev, rooms: selectedRooms }))
-            }
+            options={rooms.map((room) => ({ 
+              value: room.id, 
+              label: `${room.number}${room.type ? ` (${room.type})` : ''}${room.status ? ` - ${room.status}` : ''}` 
+            }))}
+            selectedValues={formData.roomIds}
+            onChange={handleRoomSelection}
             placeholder="Select rooms"
           />
-
-          <div className="mt-3">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setShowCustomRoom(true)}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Custom Room
-            </Button>
-          </div>
-
-          {showCustomRoom && (
-            <div className="mt-3 flex gap-2">
-              <div className="flex-1">
-                <Input
-                  id="custom-room"
-                  label=""
-                  value={customRoom}
-                  onChange={setCustomRoom}
-                  placeholder="Enter room name"
-                  onKeyDown={(e) => e.key === "Enter" && handleAddCustomRoom()}
-                />
-              </div>
-              <Button variant="primary" size="sm" onClick={handleAddCustomRoom}>
-                <Plus className="w-3 h-3 mr-1" />
-                Add
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  setShowCustomRoom(false);
-                  setCustomRoom("");
-                }}
-              >
-                <X className="w-3 h-3 mr-1" />
-                Cancel
-              </Button>
-            </div>
-          )}
 
           {formData.rooms.length > 0 && (
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
               Selected: {formData.rooms.join(", ")}
+            </p>
+          )}
+          
+          {rooms.length === 0 && (
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+              No rooms available. Add rooms in the Admin Dashboard → Room Management section.
             </p>
           )}
         </div>
