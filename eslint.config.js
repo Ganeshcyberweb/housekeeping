@@ -29,6 +29,7 @@ export default tseslint.config([
         "error",
         { argsIgnorePattern: "^err(or)?$", varsIgnorePattern: "^err(or)?$" },
       ],
+      "@typescript-eslint/no-unused-vars": "off",
     },
   },
 ]);

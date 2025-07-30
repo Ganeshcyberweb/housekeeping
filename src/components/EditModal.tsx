@@ -8,7 +8,7 @@ import {
 } from "../constants/shiftConstants";
 import Select from "./Select";
 import Input from "./Input";
-import Button from "./Button";
+import Button from "./ui/Button";
 import DropdownCheckBox from "./DropdownCheckbox";
 import TextArea from "./TextArea";
 import {
@@ -20,7 +20,6 @@ import {
   Save,
   Plus,
   X,
-  Loader2,
 } from "lucide-react";
 
 interface EditModalProps {
@@ -49,7 +48,9 @@ const EditModal: React.FC<EditModalProps> = ({
       setFormData({
         date: shift.date,
         shift: shift.shift,
-        staff: shift.staff,
+        staffId: shift.staffId,
+        staffName: shift.staffName,
+        roomIds: shift.roomIds,
         rooms: shift.rooms,
         notes: shift.notes,
       });
@@ -66,17 +67,17 @@ const EditModal: React.FC<EditModalProps> = ({
   const handleStaffSelection = (staffValue: string) => {
     if (staffValue === "custom") {
       setShowCustomStaff(true);
-      setFormData((prev) => ({ ...prev, staff: "" }));
+      setFormData((prev) => ({ ...prev, staffId: "", staffName: "" }));
     } else {
       setShowCustomStaff(false);
       setCustomStaff("");
-      setFormData((prev) => ({ ...prev, staff: staffValue }));
+      setFormData((prev) => ({ ...prev, staffId: staffValue, staffName: staffValue }));
     }
   };
 
   const handleCustomStaffSubmit = () => {
     if (customStaff.trim()) {
-      setFormData((prev) => ({ ...prev, staff: customStaff.trim() }));
+      setFormData((prev) => ({ ...prev, staffId: customStaff.trim(), staffName: customStaff.trim() }));
       setShowCustomStaff(false);
     }
   };
@@ -91,6 +92,7 @@ const EditModal: React.FC<EditModalProps> = ({
       setFormData((prev) => ({
         ...prev,
         rooms: [...(prev.rooms || []), customRoom.trim()],
+        roomIds: [...(prev.roomIds || []), customRoom.trim()],
       }));
       setCustomRoom("");
       setShowCustomRoom(false);
@@ -103,32 +105,44 @@ const EditModal: React.FC<EditModalProps> = ({
     if (
       !formData.date ||
       !formData.shift ||
-      !formData.staff ||
+      !formData.staffId ||
       !formData.rooms?.length
     ) {
       return;
     }
 
     // Auto-add custom staff if they entered a name but didn't click "Add"
-    const actualStaff =
+    const actualStaffId =
       showCustomStaff && customStaff.trim()
         ? customStaff.trim()
-        : formData.staff;
+        : formData.staffId;
+    const actualStaffName =
+      showCustomStaff && customStaff.trim()
+        ? customStaff.trim()
+        : formData.staffName;
 
     // Auto-add custom room if they entered a name but didn't click "Add"
     const actualRooms =
       showCustomRoom &&
       customRoom.trim() &&
-      !formData.rooms.includes(customRoom.trim())
-        ? [...formData.rooms, customRoom.trim()]
-        : formData.rooms;
+      !formData.rooms?.includes(customRoom.trim())
+        ? [...(formData.rooms || []), customRoom.trim()]
+        : formData.rooms || [];
+    const actualRoomIds =
+      showCustomRoom &&
+      customRoom.trim() &&
+      !formData.roomIds?.includes(customRoom.trim())
+        ? [...(formData.roomIds || []), customRoom.trim()]
+        : formData.roomIds || [];
 
     setLoading(true);
     try {
       await onSave({
         date: formData.date,
         shift: formData.shift,
-        staff: actualStaff,
+        staffId: actualStaffId,
+        staffName: actualStaffName,
+        roomIds: actualRoomIds,
         rooms: actualRooms,
         notes: formData.notes || "",
       });
@@ -199,7 +213,7 @@ const EditModal: React.FC<EditModalProps> = ({
               <Select
                 id="edit-staff-member"
                 label=""
-                value={showCustomStaff ? "custom" : formData.staff || ""}
+                value={showCustomStaff ? "custom" : formData.staffId || ""}
                 onChange={handleStaffSelection}
                 options={[
                   ...STAFF_LIST.map((staff) => ({
@@ -230,11 +244,9 @@ const EditModal: React.FC<EditModalProps> = ({
                     variant="primary"
                     size="sm"
                     onClick={handleCustomStaffSubmit}
+                    icon={<Plus className="w-3 h-3" />}
                   >
-                    <div className="inline-flex items-center gap-1">
-                      <Plus className="w-3 h-3" />
-                      Add
-                    </div>
+                    Add
                   </Button>
                   <Button
                     variant="secondary"
@@ -243,18 +255,16 @@ const EditModal: React.FC<EditModalProps> = ({
                       setShowCustomStaff(false);
                       setCustomStaff("");
                     }}
+                    icon={<X className="w-3 h-3" />}
                   >
-                    <div className="inline-flex items-center gap-1">
-                      <X className="w-3 h-3" />
-                      Cancel
-                    </div>
+                    Cancel
                   </Button>
                 </div>
               )}
 
-              {formData.staff && !showCustomStaff && (
+              {formData.staffName && !showCustomStaff && (
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                  Selected: {formData.staff}
+                  Selected: {formData.staffName}
                 </p>
               )}
             </div>
@@ -271,7 +281,7 @@ const EditModal: React.FC<EditModalProps> = ({
                 options={roomList.map((room) => ({ value: room, label: room }))}
                 selectedValues={formData.rooms || []}
                 onChange={(selectedRooms) =>
-                  setFormData((prev) => ({ ...prev, rooms: selectedRooms }))
+                  setFormData((prev) => ({ ...prev, rooms: selectedRooms, roomIds: selectedRooms }))
                 }
                 placeholder="Select rooms"
               />
@@ -281,11 +291,9 @@ const EditModal: React.FC<EditModalProps> = ({
                   variant="secondary"
                   size="sm"
                   onClick={() => setShowCustomRoom(true)}
+                  icon={<Plus className="w-4 h-4" />}
                 >
-                  <div className="inline-flex items-center gap-2">
-                    <Plus className="w-4 h-4" />
-                    Add Custom Room
-                  </div>
+                  Add Custom Room
                 </Button>
               </div>
 
@@ -307,11 +315,9 @@ const EditModal: React.FC<EditModalProps> = ({
                     variant="primary"
                     size="sm"
                     onClick={handleAddCustomRoom}
+                    icon={<Plus className="w-3 h-3" />}
                   >
-                    <div className="inline-flex items-center gap-1">
-                      <Plus className="w-3 h-3" />
-                      Add
-                    </div>
+                    Add
                   </Button>
                   <Button
                     variant="secondary"
@@ -320,11 +326,9 @@ const EditModal: React.FC<EditModalProps> = ({
                       setShowCustomRoom(false);
                       setCustomRoom("");
                     }}
+                    icon={<X className="w-3 h-3" />}
                   >
-                    <div className="inline-flex items-center gap-1">
-                      <X className="w-3 h-3" />
-                      Cancel
-                    </div>
+                    Cancel
                   </Button>
                 </div>
               )}
@@ -351,20 +355,16 @@ const EditModal: React.FC<EditModalProps> = ({
             {/* Action Buttons */}
             <div className="flex justify-end gap-3 pt-4">
               <Button variant="secondary" onClick={onClose} disabled={loading}>
-                <div className="inline-flex items-center gap-2">Cancel</div>
+                Cancel
               </Button>
-              <Button type="submit" variant="primary" disabled={loading}>
-                {loading ? (
-                  <div className="inline-flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Saving...
-                  </div>
-                ) : (
-                  <div className="inline-flex items-center gap-2">
-                    <Save className="w-4 h-4" />
-                    Save Changes
-                  </div>
-                )}
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={loading}
+                loading={loading}
+                icon={loading ? undefined : <Save className="w-4 h-4" />}
+              >
+                {loading ? "Saving..." : "Save Changes"}
               </Button>
             </div>
           </form>

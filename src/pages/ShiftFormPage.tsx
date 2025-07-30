@@ -4,17 +4,23 @@ import { db } from "../lib/firebase";
 import Select from "../components/Select";
 import TextArea from "../components/TextArea";
 import Input from "../components/Input";
-import Button from "../components/Button";
+import Button from "../components/ui/Button";
 import DropdownCheckBox from "../components/DropdownCheckbox";
 import { useShiftsStore } from "../store/shiftsStore";
 import { useStaffStore } from "../store/staffStore";
 import { useRoomStore } from "../store/roomStore";
+import { type ShiftFormData, SHIFT_TYPES } from "../constants/shiftConstants";
 import {
-  type ShiftFormData,
-  SHIFT_TYPES,
-  ROOM_LIST,
-} from "../constants/shiftConstants";
-import { Save, Plus, X, Loader2 } from "lucide-react";
+  Save,
+  Plus,
+  X,
+  Calendar,
+  Users,
+  Home as HomeIcon,
+  FileText,
+  CheckCircle,
+  AlertCircle,
+} from "lucide-react";
 
 const ShiftFormPage = () => {
   const { fetchShifts } = useShiftsStore();
@@ -30,8 +36,8 @@ const ShiftFormPage = () => {
     notes: "",
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [, setError] = useState<string | null>(null);
+  const [, setSuccess] = useState(false);
   const [customStaff, setCustomStaff] = useState("");
   const [showCustomStaff, setShowCustomStaff] = useState(false);
   // We'll use rooms directly from database, no need for custom room functionality
@@ -60,12 +66,12 @@ const ShiftFormPage = () => {
     } else {
       setShowCustomStaff(false);
       setCustomStaff("");
-      const selectedStaff = staff.find(s => s.id === staffValue);
+      const selectedStaff = staff.find((s) => s.id === staffValue);
       if (selectedStaff) {
-        setFormData((prev) => ({ 
-          ...prev, 
-          staffId: selectedStaff.id, 
-          staffName: selectedStaff.name 
+        setFormData((prev) => ({
+          ...prev,
+          staffId: selectedStaff.id,
+          staffName: selectedStaff.name,
         }));
       }
     }
@@ -80,20 +86,20 @@ const ShiftFormPage = () => {
         await addStaff({
           name: customStaff.trim(),
         });
-        
+
         // Refresh staff list to get the new staff member with ID
         await fetchStaff();
-        
+
         // Find the newly added staff member
-        const newStaffMember = staff.find(s => s.name === customStaff.trim());
+        const newStaffMember = staff.find((s) => s.name === customStaff.trim());
         if (newStaffMember) {
-          setFormData((prev) => ({ 
-            ...prev, 
-            staffId: newStaffMember.id, 
-            staffName: newStaffMember.name 
+          setFormData((prev) => ({
+            ...prev,
+            staffId: newStaffMember.id,
+            staffName: newStaffMember.name,
           }));
         }
-        
+
         setShowCustomStaff(false);
         setCustomStaff("");
       } catch (err) {
@@ -103,11 +109,13 @@ const ShiftFormPage = () => {
   };
 
   const handleRoomSelection = (selectedRoomIds: string[]) => {
-    const selectedRooms = selectedRoomIds.map(roomId => {
-      const room = rooms.find(r => r.id === roomId);
-      return room ? room.number : '';
-    }).filter(Boolean);
-    
+    const selectedRooms = selectedRoomIds
+      .map((roomId) => {
+        const room = rooms.find((r) => r.id === roomId);
+        return room ? room.number : "";
+      })
+      .filter(Boolean);
+
     setFormData((prev) => ({
       ...prev,
       roomIds: selectedRoomIds,
@@ -185,172 +193,235 @@ const ShiftFormPage = () => {
   };
 
   return (
-    <div className="p-6 dark:bg-gray-800">
-      <h1 className="text-3xl font-semibold text-gray-900 dark:text-white mb-8">
-        Shift Assignment
-      </h1>
+    <div className="">
+      <div className="p-6 space-y-6">
+        {/* Form Section */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
+          <form onSubmit={handleSubmit} className="space-y-8">
+            {/* Basic Information Section */}
+            <div className="space-y-6">
+              <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-purple-600" />
+                  Shift Details
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  Set the date and time for this shift
+                </p>
+              </div>
 
-      {success && (
-        <div className="mb-6 p-4 bg-green-50 dark:bg-green-900 border border-green-300 dark:border-green-700 text-green-800 dark:text-green-100 rounded-lg text-sm">
-          ✓ Shift has been successfully saved!
-        </div>
-      )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Date Selector */}
+                <div>
+                  <Input
+                    id="date"
+                    type="date"
+                    label="Date"
+                    value={formData.date}
+                    onChange={(value) => handleInputChange("date", value)}
+                    required
+                  />
+                </div>
 
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900 border border-red-300 dark:border-red-700 text-red-800 dark:text-red-100 rounded-lg text-sm">
-          {error}
-        </div>
-      )}
+                {/* Shift Type */}
+                <div>
+                  <Select
+                    id="shift-type"
+                    label="Shift Type"
+                    value={formData.shift}
+                    onChange={(value) => handleInputChange("shift", value)}
+                    options={SHIFT_TYPES.map((shift) => ({
+                      value: shift,
+                      label: shift,
+                    }))}
+                    placeholder="Select shift type"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Date Selector */}
-        <div>
-          <Input
-            id="date"
-            type="date"
-            label="Date"
-            value={formData.date}
-            onChange={(value) => handleInputChange("date", value)}
-            required
-          />
-        </div>
+            {/* Staff Assignment Section */}
+            <div className="space-y-6">
+              <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <Users className="w-5 h-5 text-blue-600" />
+                  Staff Assignment
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  Choose who will work this shift
+                </p>
+              </div>
 
-        {/* Shift Type */}
-        <div>
-          <Select
-            id="shift-type"
-            label="Shift Type"
-            value={formData.shift}
-            onChange={(value) => handleInputChange("shift", value)}
-            options={SHIFT_TYPES.map((shift) => ({
-              value: shift,
-              label: shift,
-            }))}
-            placeholder="Select shift type"
-            required
-          />
-        </div>
+              <div>
+                <Select
+                  id="staff-member"
+                  label="Staff Member"
+                  value={showCustomStaff ? "custom" : formData.staffId}
+                  onChange={handleStaffSelection}
+                  options={[
+                    ...staff.map((staffMember) => ({
+                      value: staffMember.id,
+                      label: `${staffMember.name}${
+                        staffMember.role ? ` (${staffMember.role})` : ""
+                      }`,
+                    })),
+                    { value: "custom", label: "+ Add New Staff Member" },
+                  ]}
+                  placeholder="Select staff member"
+                  required
+                />
 
-        {/* Staff Selection */}
-        <div>
-          <Select
-            id="staff-member"
-            label="Staff Member"
-            value={showCustomStaff ? "custom" : formData.staffId}
-            onChange={handleStaffSelection}
-            options={[
-              ...staff.map((staffMember) => ({ 
-                value: staffMember.id, 
-                label: `${staffMember.name}${staffMember.role ? ` (${staffMember.role})` : ''}` 
-              })),
-              { value: "custom", label: "+ Add Custom Staff Member" },
-            ]}
-            placeholder="Select staff member"
-            required
-          />
+                {showCustomStaff && (
+                  <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-xl">
+                    <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+                      Add New Staff Member
+                    </h4>
+                    <div className="flex gap-3">
+                      <div className="flex-1">
+                        <Input
+                          id="custom-staff"
+                          label=""
+                          value={customStaff}
+                          onChange={setCustomStaff}
+                          placeholder="Enter staff name"
+                          onKeyDown={(e) =>
+                            e.key === "Enter" && handleCustomStaffSubmit()
+                          }
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={handleCustomStaffSubmit}
+                          icon={<Plus className="w-3 h-3" />}
+                        >
+                          Add
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => {
+                            setShowCustomStaff(false);
+                            setCustomStaff("");
+                          }}
+                          icon={<X className="w-3 h-3" />}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
-          {showCustomStaff && (
-            <div className="mt-3 flex gap-2">
-              <div className="flex-1">
-                <Input
-                  id="custom-staff"
-                  label=""
-                  value={customStaff}
-                  onChange={setCustomStaff}
-                  placeholder="Enter staff name"
-                  onKeyDown={(e) =>
-                    e.key === "Enter" && handleCustomStaffSubmit()
-                  }
+                {formData.staffName && !showCustomStaff && (
+                  <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
+                    <p className="text-sm text-green-800 dark:text-green-200 flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4" />
+                      Selected:{" "}
+                      <span className="font-medium">{formData.staffName}</span>
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Room Assignment Section */}
+            <div className="space-y-6">
+              <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <HomeIcon className="w-5 h-5 text-green-600" />
+                  Room Assignment
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  Select which rooms need to be cleaned during this shift
+                </p>
+              </div>
+
+              <div>
+                <DropdownCheckBox
+                  id="rooms"
+                  label="Rooms"
+                  options={rooms.map((room) => ({
+                    value: room.id,
+                    label: `${room.number}${
+                      room.type ? ` (${room.type})` : ""
+                    }${room.status ? ` - ${room.status}` : ""}`,
+                  }))}
+                  selectedValues={formData.roomIds}
+                  onChange={handleRoomSelection}
+                  placeholder="Select rooms to clean"
+                />
+
+                {formData.rooms.length > 0 && (
+                  <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+                    <p className="text-sm text-blue-800 dark:text-blue-200 flex items-center gap-2">
+                      <HomeIcon className="w-4 h-4" />
+                      Selected rooms:{" "}
+                      <span className="font-medium">
+                        {formData.rooms.join(", ")}
+                      </span>
+                    </p>
+                  </div>
+                )}
+
+                {rooms.length === 0 && (
+                  <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl">
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200 flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4" />
+                      No rooms available. Add rooms in Room Management first.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Additional Information Section */}
+            <div className="space-y-6">
+              <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-gray-600" />
+                  Additional Information
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  Add any special instructions or notes for this shift
+                </p>
+              </div>
+
+              <div>
+                <TextArea
+                  id="notes"
+                  label="Notes (Optional)"
+                  value={formData.notes}
+                  onChange={(value) => handleInputChange("notes", value)}
+                  rows={4}
+                  placeholder="Any additional remarks, special instructions, or important details for this shift..."
                 />
               </div>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleCustomStaffSubmit}
-              >
-                <Plus className="w-3 h-3 mr-1" />
-                Add
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  setShowCustomStaff(false);
-                  setCustomStaff("");
-                }}
-              >
-                <X className="w-3 h-3 mr-1" />
-                Cancel
-              </Button>
             </div>
-          )}
 
-          {formData.staffName && !showCustomStaff && (
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-              Selected: {formData.staffName}
-            </p>
-          )}
-        </div>
-
-        {/* Room Selection */}
-        <div>
-          <DropdownCheckBox
-            id="rooms"
-            label="Rooms"
-            options={rooms.map((room) => ({ 
-              value: room.id, 
-              label: `${room.number}${room.type ? ` (${room.type})` : ''}${room.status ? ` - ${room.status}` : ''}` 
-            }))}
-            selectedValues={formData.roomIds}
-            onChange={handleRoomSelection}
-            placeholder="Select rooms"
-          />
-
-          {formData.rooms.length > 0 && (
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-              Selected: {formData.rooms.join(", ")}
-            </p>
-          )}
-          
-          {rooms.length === 0 && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-              No rooms available. Add rooms in the Admin Dashboard → Room Management section.
-            </p>
-          )}
-        </div>
-
-        {/* Notes */}
-        <div>
-          <TextArea
-            id="notes"
-            label="Notes (Optional)"
-            value={formData.notes}
-            onChange={(value) => handleInputChange("notes", value)}
-            rows={3}
-            placeholder="Any additional remarks or special instructions..."
-          />
-        </div>
-
-        {/* Submit Button */}
-        <Button
-          type="submit"
-          variant="primary"
-          disabled={loading}
-          className="w-fit"
-        >
-          {loading ? (
-            <div className="inline-flex items-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Saving...
+            {/* Submit Section */}
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  Review all details before creating the shift
+                </div>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  disabled={loading}
+                  loading={loading}
+                  icon={loading ? undefined : <Save className="w-4 h-4" />}
+                  size="lg"
+                >
+                  {loading ? "Creating Shift..." : "Create Shift Assignment"}
+                </Button>
+              </div>
             </div>
-          ) : (
-            <div className="inline-flex items-center gap-2">
-              <Save className="w-4 h-4" />
-              Save Shift Assignment
-            </div>
-          )}
-        </Button>
-      </form>
+          </form>
+        </div>
+      </div>
     </div>
   );
 };

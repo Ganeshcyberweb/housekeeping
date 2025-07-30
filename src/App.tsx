@@ -2,12 +2,15 @@ import type { ReactNode } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import ShiftFormPage from "./pages/ShiftFormPage";
 import AdminPage from "./pages/AdminPage";
+import AdminShiftManagementPage from "./pages/AdminShiftManagementPage";
+import AdminStaffManagementPage from "./pages/AdminStaffManagementPage";
+import AdminRoomManagementPage from "./pages/AdminRoomManagementPage";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import { AuthProvider } from "./context/AuthContextProvider";
 import { useAuth } from "./context/useAuth";
 import HomePage from "./pages/HomePage";
-import Layout from "./components/Layout";
+import MainLayout from "./components/MainLayout";
 
 function PrivateRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
@@ -28,16 +31,23 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
+          <Route
+            path="/"
+            element={
+              <MainLayout>
+                <HomePage />
+              </MainLayout>
+            }
+          />
           <Route
             path="/shift-form"
             element={
               <PrivateRoute>
-                <Layout>
+                <MainLayout>
                   <ShiftFormPage />
-                </Layout>
+                </MainLayout>
               </PrivateRoute>
             }
           />
@@ -45,9 +55,39 @@ function App() {
             path="/admin"
             element={
               <PrivateRoute>
-                <Layout>
+                <MainLayout>
                   <AdminPage />
-                </Layout>
+                </MainLayout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/shift-management"
+            element={
+              <PrivateRoute>
+                <MainLayout>
+                  <AdminShiftManagementPage />
+                </MainLayout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/staff-management"
+            element={
+              <PrivateRoute>
+                <MainLayout>
+                  <AdminStaffManagementPage />
+                </MainLayout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/room-management"
+            element={
+              <PrivateRoute>
+                <MainLayout>
+                  <AdminRoomManagementPage />
+                </MainLayout>
               </PrivateRoute>
             }
           />

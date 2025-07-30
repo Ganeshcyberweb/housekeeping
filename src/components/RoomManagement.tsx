@@ -1,25 +1,50 @@
 import { useState, useEffect, useRef } from "react";
 import { Timestamp } from "firebase/firestore";
-import Table from "./Table";
+import TableNew from "./TableNew";
+import Tag from "./ui/Tag";
+import Button from "./ui/Button";
+import AnalyticsCard from "./AnalyticsCard";
 import { useRoomStore, type Room } from "../store/roomStore";
 import { useShiftsStore } from "../store/shiftsStore";
 import {
-  RefreshCw,
   Home,
-  Edit,
-  Trash2,
   AlertCircle,
-  Plus,
-  Upload,
   Download,
   Search,
   X,
   FileText,
   Hash,
   Calendar,
+  CheckCircle,
+  XCircle,
+  Settings,
 } from "lucide-react";
 
-const RoomManagement = () => {
+interface RoomManagementProps {
+  searchFilter?: string;
+  showAddRoomModal?: boolean;
+  setShowAddRoomModal?: (show: boolean) => void;
+  showBulkUpload?: boolean;
+  setShowBulkUpload?: (show: boolean) => void;
+  csvData?: string;
+  setCsvData?: (data: string) => void;
+  fileInputRef?: React.RefObject<HTMLInputElement>;
+  onFilterChange?: (filters: { searchFilter?: string }) => void;
+  onBulkUpload?: () => void;
+  onAddRoom?: () => void;
+}
+
+const RoomManagement = ({
+  searchFilter: externalSearchFilter,
+  showAddRoomModal: externalShowAddRoomModal,
+  setShowAddRoomModal: externalSetShowAddRoomModal,
+  showBulkUpload: externalShowBulkUpload,
+  setShowBulkUpload: externalSetShowBulkUpload,
+  csvData: externalCsvData,
+  setCsvData: externalSetCsvData,
+  fileInputRef: externalFileInputRef,
+  onFilterChange,
+}: RoomManagementProps = {}) => {
   const {
     rooms,
     error: roomError,
@@ -30,26 +55,46 @@ const RoomManagement = () => {
     addBulkRooms,
     clearError: clearRoomError,
   } = useRoomStore();
-  
-  const {
-    checkRoomHasShifts,
-    getShiftsByRoomId,
-    removeRoomFromShifts,
-  } = useShiftsStore();
+
+  const { checkRoomHasShifts, getShiftsByRoomId, removeRoomFromShifts } =
+    useShiftsStore();
 
   // Room management states
-  const [showAddRoomModal, setShowAddRoomModal] = useState(false);
+  const [internalShowAddRoomModal, setInternalShowAddRoomModal] =
+    useState(false);
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
   const [deletingRoom, setDeletingRoom] = useState<string | null>(null);
   const [roomToDelete, setRoomToDelete] = useState<Room | null>(null);
   const [showDeleteWarning, setShowDeleteWarning] = useState(false);
   const [assignedShiftsCount, setAssignedShiftsCount] = useState(0);
-  const [showBulkUpload, setShowBulkUpload] = useState(false);
-  const [newRoom, setNewRoom] = useState({ number: '', type: '', status: '' });
-  const [csvData, setCsvData] = useState('');
-  const [searchFilter, setSearchFilter] = useState('');
+  const [internalShowBulkUpload, setInternalShowBulkUpload] = useState(false);
+  const [newRoom, setNewRoom] = useState({ number: "", type: "", status: "" });
+  const [internalCsvData, setInternalCsvData] = useState("");
+  const [internalSearchFilter, setInternalSearchFilter] = useState("");
   const [filteredRooms, setFilteredRooms] = useState<Room[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const internalFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Use external props if provided, otherwise use internal state
+  const showAddRoomModal =
+    externalShowAddRoomModal !== undefined
+      ? externalShowAddRoomModal
+      : internalShowAddRoomModal;
+  const setShowAddRoomModal =
+    externalSetShowAddRoomModal || setInternalShowAddRoomModal;
+  const showBulkUpload =
+    externalShowBulkUpload !== undefined
+      ? externalShowBulkUpload
+      : internalShowBulkUpload;
+  const setShowBulkUpload =
+    externalSetShowBulkUpload || setInternalShowBulkUpload;
+  const csvData =
+    externalCsvData !== undefined ? externalCsvData : internalCsvData;
+  const setCsvData = externalSetCsvData || setInternalCsvData;
+  const searchFilter =
+    externalSearchFilter !== undefined
+      ? externalSearchFilter
+      : internalSearchFilter;
+  const fileInputRef = externalFileInputRef || internalFileInputRef;
 
   useEffect(() => {
     if (rooms.length === 0) {
@@ -62,36 +107,46 @@ const RoomManagement = () => {
     let filtered = [...rooms];
 
     if (searchFilter) {
-      filtered = filtered.filter((room) =>
-        room.number.toLowerCase().includes(searchFilter.toLowerCase()) ||
-        room.type?.toLowerCase().includes(searchFilter.toLowerCase()) ||
-        room.status?.toLowerCase().includes(searchFilter.toLowerCase())
+      filtered = filtered.filter(
+        (room) =>
+          room.number.toLowerCase().includes(searchFilter.toLowerCase()) ||
+          room.type?.toLowerCase().includes(searchFilter.toLowerCase()) ||
+          room.status?.toLowerCase().includes(searchFilter.toLowerCase())
       );
     }
 
     setFilteredRooms(filtered);
   }, [rooms, searchFilter]);
 
+  // Handle internal search filter changes
+  const handleSearchFilterChange = (value: string) => {
+    if (externalSearchFilter !== undefined && onFilterChange) {
+      onFilterChange({ searchFilter: value });
+    } else {
+      setInternalSearchFilter(value);
+    }
+  };
+
   // Room management functions
   const handleAddRoom = async () => {
     if (!newRoom.number.trim()) return;
-    
+
     try {
       const roomData: any = {
         number: newRoom.number.trim(),
       };
-      
+
       // Only add optional fields if they have values
       if (newRoom.type.trim()) {
         roomData.type = newRoom.type.trim();
       }
-      
+
       if (newRoom.status.trim()) {
         roomData.status = newRoom.status.trim();
       }
-      
+
       await addRoom(roomData);
-      setNewRoom({ number: '', type: '', status: '' });
+      setNewRoom({ number: "", type: "", status: "" });
       setShowAddRoomModal(false);
     } catch (err) {
       // Error is handled in the store
@@ -104,14 +159,14 @@ const RoomManagement = () => {
 
   const handleSaveRoomEdit = async (updates: Partial<Room>) => {
     if (!editingRoom) return;
-    
+
     try {
       const cleanUpdates: any = {
         number: updates.number?.trim(),
-        type: updates.type?.trim() || '',  // Pass empty string to delete field
-        status: updates.status?.trim() || '', // Pass empty string to delete field
+        type: updates.type?.trim() || "", // Pass empty string to delete field
+        status: updates.status?.trim() || "", // Pass empty string to delete field
       };
-      
+
       await updateRoom(editingRoom.id, cleanUpdates);
       setEditingRoom(null);
     } catch (err) {
@@ -136,10 +191,10 @@ const RoomManagement = () => {
       try {
         // First remove room from all shifts
         await removeRoomFromShifts(roomToDelete.id);
-        
+
         // Then delete the room
         await deleteRoom(roomToDelete.id);
-        
+
         setRoomToDelete(null);
         setShowDeleteWarning(false);
         setAssignedShiftsCount(0);
@@ -160,7 +215,7 @@ const RoomManagement = () => {
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file && file.type === 'text/csv') {
+    if (file && file.type === "text/csv") {
       const reader = new FileReader();
       reader.onload = (e) => {
         const text = e.target?.result as string;
@@ -172,52 +227,55 @@ const RoomManagement = () => {
   };
 
   const parseCsvData = (csvText: string) => {
-    const lines = csvText.trim().split('\n');
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-    
-    return lines.slice(1).map(line => {
-      const values = line.split(',').map(v => v.trim());
-      const room: any = {};
-      
-      headers.forEach((header, index) => {
-        const value = values[index] || '';
-        if (value) {
-          switch (header) {
-            case 'number':
-            case 'room number':
-            case 'room':
-              room.number = value;
-              break;
-            case 'type':
-            case 'room type':
-              room.type = value;
-              break;
-            case 'status':
-              room.status = value;
-              break;
+    const lines = csvText.trim().split("\n");
+    const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
+
+    return lines
+      .slice(1)
+      .map((line) => {
+        const values = line.split(",").map((v) => v.trim());
+        const room: any = {};
+
+        headers.forEach((header, index) => {
+          const value = values[index] || "";
+          if (value) {
+            switch (header) {
+              case "number":
+              case "room number":
+              case "room":
+                room.number = value;
+                break;
+              case "type":
+              case "room type":
+                room.type = value;
+                break;
+              case "status":
+                room.status = value;
+                break;
+            }
           }
-        }
-      });
-      
-      return room;
-    }).filter(room => room.number); // Only include rooms with numbers
+        });
+
+        return room;
+      })
+      .filter((room) => room.number); // Only include rooms with numbers
   };
 
   const handleBulkUpload = async () => {
     if (!csvData.trim()) return;
-    
+
     try {
       const parsedRooms = parseCsvData(csvData);
       if (parsedRooms.length === 0) {
-        alert('No valid room data found in CSV');
+        alert("No valid room data found in CSV");
         return;
       }
-      
+
       await addBulkRooms(parsedRooms);
-      setCsvData('');
+      setCsvData("");
       setShowBulkUpload(false);
       if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+        fileInputRef.current.value = "";
       }
     } catch (err) {
       // Error is handled in the store
@@ -229,21 +287,17 @@ const RoomManagement = () => {
 Room 101,Standard,Available
 Room 102,Deluxe,Occupied
 Room 201,Suite,Maintenance`;
-    
-    const blob = new Blob([sampleData], { type: 'text/csv' });
+
+    const blob = new Blob([sampleData], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.style.display = 'none';
+    const a = document.createElement("a");
+    a.style.display = "none";
     a.href = url;
-    a.download = 'room_sample.csv';
+    a.download = "room_sample.csv";
     document.body.appendChild(a);
     a.click();
     window.URL.revokeObjectURL(url);
     document.body.removeChild(a);
-  };
-
-  const clearFilters = () => {
-    setSearchFilter('');
   };
 
   const formatCreatedAt = (timestamp: Timestamp) => {
@@ -256,8 +310,81 @@ Room 201,Suite,Maintenance`;
     });
   };
 
+  // Calculate room analytics
+  const availableRooms = rooms.filter((room) => room.status === "Available");
+  const occupiedRooms = rooms.filter((room) => room.status === "Occupied");
+  const maintenanceRooms = rooms.filter(
+    (room) => room.status === "Maintenance"
+  );
+
+  const utilizationRate =
+    rooms.length > 0
+      ? Math.round((occupiedRooms.length / rooms.length) * 100)
+      : 0;
+
   return (
     <div>
+      {/* Analytics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <AnalyticsCard
+          title="Total Rooms"
+          subtitle="Managed properties"
+          value={rooms.length}
+          icon={<Home className="w-5 h-5" />}
+          change={{
+            value: rooms.length > 50 ? "Large property" : "Growing",
+            type: "neutral",
+          }}
+          className="w-full"
+        />
+
+        <AnalyticsCard
+          title="Available"
+          subtitle="Ready for guests"
+          value={availableRooms.length}
+          icon={<CheckCircle className="w-5 h-5" />}
+          change={{
+            value: `${Math.round(
+              (availableRooms.length / (rooms.length || 1)) * 100
+            )}% available`,
+            type:
+              availableRooms.length > occupiedRooms.length
+                ? "increase"
+                : "decrease",
+          }}
+          className="w-full"
+        />
+
+        <AnalyticsCard
+          title="Occupied"
+          subtitle="Currently in use"
+          value={occupiedRooms.length}
+          icon={<XCircle className="w-5 h-5" />}
+          change={{
+            value: `${utilizationRate}% utilization`,
+            type:
+              utilizationRate > 70
+                ? "increase"
+                : utilizationRate > 40
+                ? "neutral"
+                : "decrease",
+          }}
+          className="w-full"
+        />
+
+        <AnalyticsCard
+          title="Maintenance"
+          subtitle="Under maintenance"
+          value={maintenanceRooms.length}
+          icon={<Settings className="w-5 h-5" />}
+          change={{
+            value: maintenanceRooms.length === 0 ? "All clear" : "In progress",
+            type: maintenanceRooms.length === 0 ? "increase" : "neutral",
+          }}
+          className="w-full"
+        />
+      </div>
+
       <div className="flex items-center justify-between mb-6">
         <div className="text-sm text-gray-600 dark:text-gray-400">
           Showing: {filteredRooms.length} / {rooms.length} rooms
@@ -270,46 +397,6 @@ Room 201,Suite,Maintenance`;
             ref={fileInputRef}
             className="hidden"
           />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="inline-flex items-center gap-2 text-gray-900 dark:text-white bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 focus:outline-none hover:bg-gray-100 dark:hover:bg-gray-600 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 font-medium rounded-lg text-sm px-4 py-2"
-          >
-            <Upload className="w-4 h-4" />
-            Bulk Upload
-          </button>
-          <button
-            onClick={() => setShowAddRoomModal(true)}
-            className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium"
-          >
-            <Plus className="w-4 h-4" />
-            Add Room
-          </button>
-        </div>
-      </div>
-
-      {/* Search Filter */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <div>
-          <label className="flex items-center gap-1 text-sm font-medium text-gray-900 dark:text-white mb-1">
-            <Search className="w-4 h-4" />
-            Search Rooms
-          </label>
-          <input
-            type="text"
-            value={searchFilter}
-            onChange={(e) => setSearchFilter(e.target.value)}
-            placeholder="Search by number, type, or status..."
-            className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-          />
-        </div>
-        <div className="flex items-end">
-          <button
-            onClick={clearFilters}
-            className="inline-flex items-center justify-center gap-2 text-gray-900 dark:text-white bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 focus:outline-none hover:bg-gray-100 dark:hover:bg-gray-600 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 font-medium rounded-lg text-sm px-5 py-2.5 w-full"
-          >
-            <X className="w-4 h-4" />
-            Clear Filters
-          </button>
         </div>
       </div>
 
@@ -320,15 +407,17 @@ Room 201,Suite,Maintenance`;
             <AlertCircle className="w-5 h-5 flex-shrink-0" />
             <span>{roomError}</span>
           </div>
-          <button
+          <Button
             onClick={() => {
               clearRoomError();
               fetchRooms();
             }}
-            className="ml-4 underline hover:no-underline text-gray-900 dark:text-white"
+            variant="ghost"
+            className="ml-4 underline hover:no-underline"
+            size="sm"
           >
             Retry
-          </button>
+          </Button>
         </div>
       )}
 
@@ -345,19 +434,13 @@ Room 201,Suite,Maintenance`;
             Add your first room to get started.
           </p>
           <div className="flex justify-center gap-3">
-            <button
-              onClick={() => setShowAddRoomModal(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
-            >
-              Add Room
-            </button>
-            <button
+            <Button
               onClick={downloadSampleCSV}
-              className="inline-flex items-center gap-2 px-4 py-2 text-gray-900 dark:text-white bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg text-sm"
+              variant="secondary"
+              icon={<Download className="w-4 h-4" />}
             >
-              <Download className="w-4 h-4" />
               Sample CSV
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -374,19 +457,21 @@ Room 201,Suite,Maintenance`;
           <p className="text-gray-600 dark:text-gray-400 mb-6 text-sm">
             Try adjusting your search criteria.
           </p>
-          <button
-            onClick={clearFilters}
-            className="inline-flex items-center gap-2 text-gray-900 dark:text-white bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 focus:outline-none hover:bg-gray-100 dark:hover:bg-gray-600 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 font-medium rounded-lg text-sm px-5 py-2.5"
+          <Button
+            onClick={() => handleSearchFilterChange("")}
+            variant="secondary"
+            icon={<X className="w-4 h-4" />}
           >
-            <X className="w-4 h-4" />
             Clear Filters
-          </button>
+          </Button>
         </div>
       )}
 
       {/* Rooms Table */}
       {!roomError && filteredRooms.length > 0 && (
-        <Table
+        <TableNew
+          title="Room Management"
+          subtitle="Overview of all rooms and their status"
           columns={[
             {
               key: "number",
@@ -394,108 +479,42 @@ Room 201,Suite,Maintenance`;
               render: (value) => (
                 <div className="flex items-center gap-2">
                   <Hash className="w-4 h-4 text-gray-400" />
-                  <span className="font-medium text-gray-900 dark:text-white">
-                    {value}
-                  </span>
+                  <span className="font-medium text-gray-900">{value}</span>
                 </div>
               ),
             },
             {
               key: "type",
               header: "Type",
-              render: (value) => (
+              render: (value) =>
                 value ? (
-                  <span className="inline-flex px-2 py-1 text-xs font-medium rounded border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white">
-                    {value}
-                  </span>
+                  <Tag>{value}</Tag>
                 ) : (
-                  <span className="text-gray-500 dark:text-gray-400">—</span>
-                )
-              ),
+                  <span className="text-gray-500">—</span>
+                ),
             },
             {
               key: "status",
               header: "Status",
-              render: (value) => (
+              render: (value) =>
                 value ? (
-                  <span className={`inline-flex px-2 py-1 text-xs font-medium rounded border ${
-                    value.toLowerCase() === 'available' 
-                      ? 'border-green-300 dark:border-green-600 bg-green-100 dark:bg-green-700 text-green-900 dark:text-green-100'
-                      : value.toLowerCase() === 'occupied'
-                      ? 'border-red-300 dark:border-red-600 bg-red-100 dark:bg-red-700 text-red-900 dark:text-red-100'
-                      : value.toLowerCase() === 'maintenance'
-                      ? 'border-yellow-300 dark:border-yellow-600 bg-yellow-100 dark:bg-yellow-700 text-yellow-900 dark:text-yellow-100'
-                      : 'border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
-                  }`}>
-                    {value}
-                  </span>
+                  <Tag variant="status">{value}</Tag>
                 ) : (
-                  <span className="text-gray-500 dark:text-gray-400">—</span>
-                )
-              ),
+                  <span className="text-gray-500">—</span>
+                ),
             },
             {
               key: "createdAt",
               header: "Added",
               render: (value) => (
-                <span className="text-gray-500 dark:text-gray-400">
-                  {formatCreatedAt(value)}
-                </span>
-              ),
-            },
-            {
-              key: "actions",
-              header: "Actions",
-              render: (_, row) => (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleEditRoom(row)}
-                    className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-500 hover:text-blue-800 dark:hover:text-blue-400 font-medium"
-                  >
-                    <Edit className="w-3 h-3" />
-                    Edit
-                  </button>
-                  <span className="text-gray-300 dark:text-gray-600">|</span>
-                  <button
-                    onClick={() => handleDeleteRoomClick(row)}
-                    className="inline-flex items-center gap-1 text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 font-medium"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                    Delete
-                  </button>
-                </div>
+                <span className="text-gray-500">{formatCreatedAt(value)}</span>
               ),
             },
           ]}
           data={filteredRooms}
+          onEditAction={(row) => handleEditRoom(row)}
+          onDeleteAction={(row) => handleDeleteRoomClick(row)}
         />
-      )}
-
-      {/* Room Footer */}
-      {!roomError && rooms.length > 0 && (
-        <div className="pt-6 border-t border-gray-200 dark:border-gray-700 mt-6">
-          <div className="flex items-center justify-between text-sm">
-            <div className="text-gray-600 dark:text-gray-400">
-              {filteredRooms.length} of {rooms.length} room{rooms.length !== 1 ? "s" : ""}
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={downloadSampleCSV}
-                className="inline-flex items-center gap-1 text-gray-900 dark:text-white bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 focus:outline-none hover:bg-gray-100 dark:hover:bg-gray-600 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 font-medium rounded-lg text-xs py-1 px-3"
-              >
-                <Download className="w-3 h-3" />
-                Sample CSV
-              </button>
-              <button
-                onClick={fetchRooms}
-                className="inline-flex items-center gap-1 text-gray-900 dark:text-white bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 focus:outline-none hover:bg-gray-100 dark:hover:bg-gray-600 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 font-medium rounded-lg text-xs py-1 px-3"
-              >
-                <RefreshCw className="w-3 h-3" />
-                Refresh
-              </button>
-            </div>
-          </div>
-        </div>
       )}
 
       {/* Add Room Modal */}
@@ -506,7 +525,7 @@ Room 201,Suite,Maintenance`;
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
                 Add Room
               </h2>
-              
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-900 dark:text-white mb-1">
@@ -515,12 +534,14 @@ Room 201,Suite,Maintenance`;
                   <input
                     type="text"
                     value={newRoom.number}
-                    onChange={(e) => setNewRoom({ ...newRoom, number: e.target.value })}
+                    onChange={(e) =>
+                      setNewRoom({ ...newRoom, number: e.target.value })
+                    }
                     className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
                     placeholder="e.g., Room 101"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-900 dark:text-white mb-1">
                     Type
@@ -528,19 +549,23 @@ Room 201,Suite,Maintenance`;
                   <input
                     type="text"
                     value={newRoom.type}
-                    onChange={(e) => setNewRoom({ ...newRoom, type: e.target.value })}
+                    onChange={(e) =>
+                      setNewRoom({ ...newRoom, type: e.target.value })
+                    }
                     className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
                     placeholder="e.g., Standard, Deluxe, Suite"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-900 dark:text-white mb-1">
                     Status
                   </label>
                   <select
                     value={newRoom.status}
-                    onChange={(e) => setNewRoom({ ...newRoom, status: e.target.value })}
+                    onChange={(e) =>
+                      setNewRoom({ ...newRoom, status: e.target.value })
+                    }
                     className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
                   >
                     <option value="">Select status</option>
@@ -553,22 +578,22 @@ Room 201,Suite,Maintenance`;
               </div>
 
               <div className="flex justify-end gap-3 mt-6">
-                <button
+                <Button
                   onClick={() => {
                     setShowAddRoomModal(false);
-                    setNewRoom({ number: '', type: '', status: '' });
+                    setNewRoom({ number: "", type: "", status: "" });
                   }}
-                  className="text-gray-900 dark:text-white bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 focus:outline-none hover:bg-gray-100 dark:hover:bg-gray-600 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 font-medium rounded-lg text-sm px-5 py-2.5"
+                  variant="secondary"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={handleAddRoom}
                   disabled={!newRoom.number.trim()}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  variant="primary"
                 >
                   Add Room
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -583,7 +608,7 @@ Room 201,Suite,Maintenance`;
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
                 Edit Room
               </h2>
-              
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-900 dark:text-white mb-1">
@@ -592,30 +617,36 @@ Room 201,Suite,Maintenance`;
                   <input
                     type="text"
                     value={editingRoom.number}
-                    onChange={(e) => setEditingRoom({ ...editingRoom, number: e.target.value })}
+                    onChange={(e) =>
+                      setEditingRoom({ ...editingRoom, number: e.target.value })
+                    }
                     className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-900 dark:text-white mb-1">
                     Type
                   </label>
                   <input
                     type="text"
-                    value={editingRoom.type || ''}
-                    onChange={(e) => setEditingRoom({ ...editingRoom, type: e.target.value })}
+                    value={editingRoom.type || ""}
+                    onChange={(e) =>
+                      setEditingRoom({ ...editingRoom, type: e.target.value })
+                    }
                     className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-900 dark:text-white mb-1">
                     Status
                   </label>
                   <select
-                    value={editingRoom.status || ''}
-                    onChange={(e) => setEditingRoom({ ...editingRoom, status: e.target.value })}
+                    value={editingRoom.status || ""}
+                    onChange={(e) =>
+                      setEditingRoom({ ...editingRoom, status: e.target.value })
+                    }
                     className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
                   >
                     <option value="">Select status</option>
@@ -628,23 +659,25 @@ Room 201,Suite,Maintenance`;
               </div>
 
               <div className="flex justify-end gap-3 mt-6">
-                <button
+                <Button
                   onClick={() => setEditingRoom(null)}
-                  className="text-gray-900 dark:text-white bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 focus:outline-none hover:bg-gray-100 dark:hover:bg-gray-600 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 font-medium rounded-lg text-sm px-5 py-2.5"
+                  variant="secondary"
                 >
                   Cancel
-                </button>
-                <button
-                  onClick={() => handleSaveRoomEdit({
-                    number: editingRoom.number,
-                    type: editingRoom.type,
-                    status: editingRoom.status,
-                  })}
+                </Button>
+                <Button
+                  onClick={() =>
+                    handleSaveRoomEdit({
+                      number: editingRoom.number,
+                      type: editingRoom.type,
+                      status: editingRoom.status,
+                    })
+                  }
                   disabled={!editingRoom.number.trim()}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  variant="primary"
                 >
                   Save Changes
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -660,22 +693,23 @@ Room 201,Suite,Maintenance`;
                 Delete Room
               </h2>
               <p className="text-gray-600 dark:text-gray-400 mb-6">
-                Are you sure you want to delete this room? This action cannot be undone.
+                Are you sure you want to delete this room? This action cannot be
+                undone.
               </p>
 
               <div className="flex justify-end gap-3">
-                <button
+                <Button
                   onClick={() => setDeletingRoom(null)}
-                  className="text-gray-900 dark:text-white bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 focus:outline-none hover:bg-gray-100 dark:hover:bg-gray-600 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 font-medium rounded-lg text-sm px-5 py-2.5"
+                  variant="secondary"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => handleDeleteRoom(deletingRoom)}
-                  className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 font-medium"
+                  variant="danger"
                 >
                   Delete
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -693,35 +727,35 @@ Room 201,Suite,Maintenance`;
               </h2>
               <div className="mb-6">
                 <p className="text-gray-600 dark:text-gray-400 mb-3">
-                  <strong>{roomToDelete.number}</strong> is assigned to <strong>{assignedShiftsCount}</strong> shift{assignedShiftsCount !== 1 ? 's' : ''}.
+                  <strong>{roomToDelete.number}</strong> is assigned to{" "}
+                  <strong>{assignedShiftsCount}</strong> shift
+                  {assignedShiftsCount !== 1 ? "s" : ""}.
                 </p>
                 <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
                   <div className="flex items-start gap-2">
                     <Calendar className="w-4 h-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
                     <div className="text-sm text-yellow-800 dark:text-yellow-200">
-                      Deleting this room will remove it from all assigned shifts. This action cannot be undone.
+                      Deleting this room will remove it from all assigned
+                      shifts. This action cannot be undone.
                     </div>
                   </div>
                 </div>
               </div>
 
               <div className="flex justify-end gap-3">
-                <button
+                <Button
                   onClick={() => {
                     setShowDeleteWarning(false);
                     setRoomToDelete(null);
                     setAssignedShiftsCount(0);
                   }}
-                  className="text-gray-900 dark:text-white bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 focus:outline-none hover:bg-gray-100 dark:hover:bg-gray-600 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 font-medium rounded-lg text-sm px-5 py-2.5"
+                  variant="secondary"
                 >
                   Cancel
-                </button>
-                <button
-                  onClick={handleConfirmDeleteRoom}
-                  className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 font-medium"
-                >
+                </Button>
+                <Button onClick={handleConfirmDeleteRoom} variant="danger">
                   Delete Room & Remove from Shifts
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -736,7 +770,7 @@ Room 201,Suite,Maintenance`;
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
                 Bulk Upload Rooms
               </h2>
-              
+
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
                   CSV Data Preview
@@ -754,39 +788,40 @@ Room 201,Suite,Maintenance`;
                 <div className="flex items-start gap-2">
                   <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
                   <div className="text-sm text-blue-800 dark:text-blue-200">
-                    <strong>CSV Format:</strong> Include headers like Number, Type, Status. 
-                    Only "Number" is required. Click "Sample CSV" to download an example.
+                    <strong>CSV Format:</strong> Include headers like Number,
+                    Type, Status. Only "Number" is required. Click "Sample CSV"
+                    to download an example.
                   </div>
                 </div>
               </div>
 
               <div className="flex justify-end gap-3">
-                <button
+                <Button
                   onClick={downloadSampleCSV}
-                  className="inline-flex items-center gap-2 text-gray-900 dark:text-white bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 focus:outline-none hover:bg-gray-100 dark:hover:bg-gray-600 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 font-medium rounded-lg text-sm px-4 py-2"
+                  variant="secondary"
+                  icon={<Download className="w-4 h-4" />}
                 >
-                  <Download className="w-4 h-4" />
                   Sample CSV
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={() => {
                     setShowBulkUpload(false);
-                    setCsvData('');
+                    setCsvData("");
                     if (fileInputRef.current) {
-                      fileInputRef.current.value = '';
+                      fileInputRef.current.value = "";
                     }
                   }}
-                  className="text-gray-900 dark:text-white bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 focus:outline-none hover:bg-gray-100 dark:hover:bg-gray-600 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 font-medium rounded-lg text-sm px-5 py-2.5"
+                  variant="secondary"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={handleBulkUpload}
                   disabled={!csvData.trim()}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  variant="primary"
                 >
                   Upload Rooms
-                </button>
+                </Button>
               </div>
             </div>
           </div>

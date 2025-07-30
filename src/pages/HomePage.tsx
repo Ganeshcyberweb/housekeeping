@@ -1,9 +1,62 @@
 import { useAuth } from "../context/useAuth";
 import { Link } from "react-router-dom";
-import Navbar from "../components/Navbar";
+import { useEffect } from "react";
+import { useShiftsStore } from "../store/shiftsStore";
+import { useStaffStore } from "../store/staffStore";
+import { useRoomStore } from "../store/roomStore";
+import {
+  Calendar,
+  Users,
+  Home as HomeIcon,
+  Clock,
+  ArrowRight,
+  TrendingUp,
+  Activity,
+  UserCheck,
+  Bell,
+} from "lucide-react";
 
 export default function Home() {
   const { user, loading } = useAuth();
+  const { shifts, fetchShifts } = useShiftsStore();
+  const { fetchStaff } = useStaffStore();
+  const { fetchRooms } = useRoomStore();
+
+  // Fetch data when component mounts
+  useEffect(() => {
+    if (user) {
+      fetchShifts();
+      fetchStaff();
+      fetchRooms();
+    }
+  }, [user, fetchShifts, fetchStaff, fetchRooms]);
+
+  // Calculate analytics
+  const today = new Date().toISOString().split("T")[0];
+  const todaysShifts = shifts.filter((shift) => shift.date === today);
+
+
+  // Get recent shifts (last 5)
+  const recentShifts = shifts
+    .sort((a, b) => b.createdAt?.seconds - a.createdAt?.seconds)
+    .slice(0, 5);
+
+  // Get tomorrow's date for upcoming shifts
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = tomorrow.toISOString().split("T")[0];
+  const tomorrowShifts = shifts.filter((shift) => shift.date === tomorrowStr);
+
+  // Staff with most shifts
+  const staffShiftCounts = shifts.reduce((acc, shift) => {
+    const staffName = shift.staffName || "Unknown";
+    acc[staffName] = (acc[staffName] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const topStaff = Object.entries(staffShiftCounts)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 3);
 
   if (loading) {
     return (
@@ -21,57 +74,274 @@ export default function Home() {
   }
 
   return (
-    <div className=" dark:bg-gray-800 min-h-screen">
-      <Navbar />
+    <div>
+      {user ? (
+        <div className="p-6 space-y-8">
+          {/* Main Dashboard Content */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Today's Schedule */}
+            <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <Calendar className="w-5 h-5" />
+                  Today's Schedule
+                </h2>
+                <Link
+                  to="/admin/shift-management"
+                  className="text-purple-600 hover:text-purple-700 text-sm font-medium flex items-center gap-1"
+                >
+                  View all <ArrowRight className="w-3 h-3" />
+                </Link>
+              </div>
 
-      <div className="p-6">
-        <div className="bg-white dark:bg-gray-900 p-8">
-          <div className="text-center">
-            <h2 className="text-4xl font-semibold text-gray-900 dark:text-white mb-6">
-              Housekeeping Shift Planner
-            </h2>
-            <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto mb-12">
-              Streamline your housekeeping operations with our comprehensive
-              shift management system.
-            </p>
-
-            {user ? (
-              <div className="space-y-8">
-                <div className="flex justify-center space-x-4">
-                  <Link
-                    to="/admin"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 font-medium"
-                  >
-                    Dashboard
-                  </Link>
+              {todaysShifts.length > 0 ? (
+                <div className="space-y-3">
+                  {todaysShifts.slice(0, 4).map((shift, index) => (
+                    <div
+                      key={shift.id || index}
+                      className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-xl"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-white">
+                            {shift.staffName || "Unassigned"}
+                          </p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {shift.shift} •{" "}
+                            {shift.rooms?.slice(0, 2).join(", ")}
+                            {shift.rooms?.length > 2 &&
+                              ` +${shift.rooms.length - 2} more`}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                        Active
+                      </span>
+                    </div>
+                  ))}
+                  {todaysShifts.length > 4 && (
+                    <div className="text-center pt-2">
+                      <Link
+                        to="/admin/shift-management"
+                        className="text-purple-600 hover:text-purple-700 text-sm font-medium"
+                      >
+                        View {todaysShifts.length - 4} more shifts
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-600 dark:text-gray-400">
+                    No shifts scheduled for today
+                  </p>
                   <Link
                     to="/shift-form"
-                    className="px-4 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 font-medium"
+                    className="text-purple-600 hover:text-purple-700 text-sm font-medium mt-2 inline-block"
                   >
-                    Create Shift
+                    Create your first shift
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            {/* Quick Stats & Actions */}
+            <div className="space-y-6">
+              {/* Tomorrow's Preview */}
+              <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  Tomorrow's Shifts
+                </h3>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-purple-600 mb-2">
+                    {tomorrowShifts.length}
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {tomorrowShifts.length === 0
+                      ? "No shifts planned"
+                      : tomorrowShifts.length === 1
+                      ? "shift scheduled"
+                      : "shifts scheduled"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Top Performers */}
+              <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4" />
+                  Top Performers
+                </h3>
+                {topStaff.length > 0 ? (
+                  <div className="space-y-3">
+                    {topStaff.map(([name, count], index) => (
+                      <div
+                        key={name}
+                        className="flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                              index === 0
+                                ? "bg-yellow-100 text-yellow-700"
+                                : index === 1
+                                ? "bg-gray-100 text-gray-700"
+                                : "bg-orange-100 text-orange-700"
+                            }`}
+                          >
+                            {index + 1}
+                          </div>
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">
+                            {name}
+                          </span>
+                        </div>
+                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                          {count} shifts
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-600 dark:text-gray-400 text-center py-4">
+                    No shift data yet
+                  </p>
+                )}
+              </div>
+
+              {/* Quick Actions */}
+              <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                  <Activity className="w-4 h-4" />
+                  Quick Actions
+                </h3>
+                <div className="space-y-3">
+                  <Link
+                    to="/admin/shift-management"
+                    className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                  >
+                    <Calendar className="w-4 h-4 text-purple-600" />
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      Manage Shifts
+                    </span>
+                  </Link>
+                  <Link
+                    to="/admin/staff-management"
+                    className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                  >
+                    <Users className="w-4 h-4 text-blue-600" />
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      Manage Staff
+                    </span>
+                  </Link>
+                  <Link
+                    to="/admin/room-management"
+                    className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                  >
+                    <HomeIcon className="w-4 h-4 text-green-600" />
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      Manage Rooms
+                    </span>
                   </Link>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Recent Activity */}
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <Bell className="w-5 h-5" />
+                Recent Activity
+              </h2>
+            </div>
+
+            {recentShifts.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {recentShifts.map((shift, index) => (
+                  <div
+                    key={shift.id || index}
+                    className="p-4 bg-gray-50 dark:bg-gray-700 rounded-xl"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                          Shift assigned to {shift.staffName || "Unknown"}
+                        </p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                          {shift.shift} on{" "}
+                          {new Date(shift.date).toLocaleDateString()}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                          {shift.rooms?.length || 0} room
+                          {shift.rooms?.length !== 1 ? "s" : ""}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : (
-              <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm p-8 max-w-lg mx-auto text-center">
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-                  Get Started
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400 mb-8 text-sm">
-                  Access powerful shift management tools designed for
-                  housekeeping teams.
+              <div className="text-center py-8">
+                <Activity className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                <p className="text-gray-600 dark:text-gray-400">
+                  No recent activity
                 </p>
-                <Link
-                  to="/login"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700 font-medium"
-                >
-                  Sign In to Continue
-                </Link>
               </div>
             )}
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="min-h-screen flex items-center justify-center p-6">
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-lg p-8 max-w-lg w-full text-center">
+            <div className="mb-6">
+              <div className="bg-purple-500 p-3 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <HomeIcon className="w-8 h-8 text-white" />
+              </div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                Housekeeping Shift Planner
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400 text-sm">
+                Streamline your housekeeping operations with our comprehensive
+                shift management system.
+              </p>
+            </div>
+
+            <div className="space-y-4 mb-8">
+              <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-xl">
+                <Calendar className="w-5 h-5 text-purple-600" />
+                <span className="text-sm text-gray-700 dark:text-gray-300">
+                  Schedule and manage shifts
+                </span>
+              </div>
+              <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-xl">
+                <Users className="w-5 h-5 text-blue-600" />
+                <span className="text-sm text-gray-700 dark:text-gray-300">
+                  Organize your team
+                </span>
+              </div>
+              <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-xl">
+                <TrendingUp className="w-5 h-5 text-green-600" />
+                <span className="text-sm text-gray-700 dark:text-gray-300">
+                  Track performance
+                </span>
+              </div>
+            </div>
+
+            <Link
+              to="/login"
+              className="w-full bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
+            >
+              <UserCheck className="w-4 h-4" />
+              Sign In to Get Started
+            </Link>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

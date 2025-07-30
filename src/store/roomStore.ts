@@ -31,7 +31,7 @@ interface RoomStore {
   clearError: () => void;
 }
 
-export const useRoomStore = create<RoomStore>((set, get) => ({
+export const useRoomStore = create<RoomStore>((set) => ({
   rooms: [],
   loading: false,
   error: null,
