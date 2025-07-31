@@ -51,8 +51,10 @@ const Navbar = ({
   const location = useLocation();
   const [showShiftsDropdown, setShowShiftsDropdown] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [showMobileNavDropdown, setShowMobileNavDropdown] = useState(false);
   const dropdownRef = useRef<HTMLLIElement>(null);
   const userDropdownRef = useRef<HTMLDivElement>(null);
+  const mobileNavDropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -62,6 +64,9 @@ const Navbar = ({
       }
       if (userDropdownRef.current && !userDropdownRef.current.contains(event.target as Node)) {
         setShowUserDropdown(false);
+      }
+      if (mobileNavDropdownRef.current && !mobileNavDropdownRef.current.contains(event.target as Node)) {
+        setShowMobileNavDropdown(false);
       }
     };
 
@@ -137,30 +142,126 @@ const Navbar = ({
   }
 
   return (
-    <div className="bg-[#0B0F19] m-4 text-white rounded-2xl p-6 flex flex-col gap-32 -md min-h-[140px]">
+    <div className="bg-[#0B0F19] m-2 sm:m-4 text-white rounded-2xl p-4 sm:p-6 flex flex-col gap-4 sm:gap-6 lg:gap-8 min-h-[120px] sm:min-h-[140px]">
       {/* Top Navbar */}
       <div className="flex items-center justify-between">
         {/* Left - Logo & Links */}
-        <div className="flex items-center gap-3">
-          {/* Logo */}
-          <div className="bg-purple-500 p-2 rounded-full flex items-center justify-center">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="white"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="w-5 h-5"
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Mobile Navigation Dropdown - Logo clickable on mobile */}
+          <div className="relative lg:hidden" ref={mobileNavDropdownRef}>
+            <button
+              onClick={() => setShowMobileNavDropdown(!showMobileNavDropdown)}
+              className="flex items-center gap-2 hover:bg-[#1C2333] rounded-lg p-1 transition-colors"
             >
-              <path d="M12 2l9 4.9v9.8L12 22l-9-5.3V6.9L12 2z" />
-            </svg>
-          </div>
-          <span className="font-semibold text-lg">Shift Planner</span>
+              <div className="bg-purple-500 p-1.5 sm:p-2 rounded-full flex items-center justify-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="white"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="w-4 h-4 sm:w-5 sm:h-5"
+                >
+                  <path d="M12 2l9 4.9v9.8L12 22l-9-5.3V6.9L12 2z" />
+                </svg>
+              </div>
+              <span className="font-semibold text-sm sm:text-lg">Shift Planner</span>
+              <ChevronDown className={`w-3 h-3 text-gray-400 transition-transform ${showMobileNavDropdown ? 'rotate-180' : ''}`} />
+            </button>
 
-          {/* Nav Links */}
-          <ul className="flex items-center ml-6 space-x-4 text-gray-400">
+            {showMobileNavDropdown && (
+              <div className="absolute top-full left-0 mt-2 bg-[#1C2333] rounded-lg shadow-lg py-2 min-w-[200px] z-50 border border-gray-700">
+                <Link
+                  to="/"
+                  className={`block px-4 py-2 text-gray-300 hover:text-white hover:bg-[#2A3441] transition-colors ${
+                    location.pathname === "/" ? "text-white bg-[#2A3441]" : ""
+                  }`}
+                  onClick={() => setShowMobileNavDropdown(false)}
+                >
+                  <div className="flex items-center gap-2">
+                    <Home className="w-4 h-4" />
+                    Home
+                  </div>
+                </Link>
+                
+                <Link
+                  to="/admin/shift-management"
+                  className={`block px-4 py-2 text-gray-300 hover:text-white hover:bg-[#2A3441] transition-colors ${
+                    location.pathname === "/admin/shift-management" ? "text-white bg-[#2A3441]" : ""
+                  }`}
+                  onClick={() => setShowMobileNavDropdown(false)}
+                >
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4" />
+                    Shift Management
+                  </div>
+                </Link>
+                
+                <Link
+                  to="/shift-form"
+                  className={`block px-4 py-2 text-gray-300 hover:text-white hover:bg-[#2A3441] transition-colors ${
+                    location.pathname === "/shift-form" ? "text-white bg-[#2A3441]" : ""
+                  }`}
+                  onClick={() => setShowMobileNavDropdown(false)}
+                >
+                  <div className="flex items-center gap-2">
+                    <Plus className="w-4 h-4" />
+                    Create Shift
+                  </div>
+                </Link>
+                
+                <Link
+                  to="/admin/staff-management"
+                  className={`block px-4 py-2 text-gray-300 hover:text-white hover:bg-[#2A3441] transition-colors ${
+                    location.pathname === "/admin/staff-management" ? "text-white bg-[#2A3441]" : ""
+                  }`}
+                  onClick={() => setShowMobileNavDropdown(false)}
+                >
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    Staff Management
+                  </div>
+                </Link>
+                
+                <Link
+                  to="/admin/room-management"
+                  className={`block px-4 py-2 text-gray-300 hover:text-white hover:bg-[#2A3441] transition-colors ${
+                    location.pathname === "/admin/room-management" ? "text-white bg-[#2A3441]" : ""
+                  }`}
+                  onClick={() => setShowMobileNavDropdown(false)}
+                >
+                  <div className="flex items-center gap-2">
+                    <Home className="w-4 h-4" />
+                    Room Management
+                  </div>
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {/* Desktop Logo - Non-clickable */}
+          <div className="hidden lg:flex items-center gap-2 sm:gap-3">
+            <div className="bg-purple-500 p-1.5 sm:p-2 rounded-full flex items-center justify-center">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="white"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="w-4 h-4 sm:w-5 sm:h-5"
+              >
+                <path d="M12 2l9 4.9v9.8L12 22l-9-5.3V6.9L12 2z" />
+              </svg>
+            </div>
+            <span className="font-semibold text-sm sm:text-lg">Shift Planner</span>
+          </div>
+
+          {/* Nav Links - Hidden on mobile, shown on larger screens */}
+          <ul className="hidden lg:flex items-center ml-6 space-x-4 text-gray-400">
             <li
               className={`px-3 py-1 rounded-lg ${
                 location.pathname === "/"
@@ -237,10 +338,10 @@ const Navbar = ({
         <div className="relative" ref={userDropdownRef}>
           <button
             onClick={() => setShowUserDropdown(!showUserDropdown)}
-            className="flex items-center gap-3 hover:bg-[#1C2333] rounded-lg p-2 transition-colors"
+            className="flex items-center gap-2 sm:gap-3 hover:bg-[#1C2333] rounded-lg p-1.5 sm:p-2 transition-colors"
           >
             <div className="text-right hidden md:block">
-              <p className="text-sm font-medium text-white">
+              <p className="text-xs sm:text-sm font-medium text-white">
                 {user?.displayName || 'User'}
               </p>
               <p className="text-xs text-gray-400">
@@ -250,15 +351,15 @@ const Navbar = ({
             <img
               src={user?.photoURL || "https://i.pravatar.cc/40"}
               alt="user"
-              className="w-9 h-9 rounded-full border border-gray-500"
+              className="w-7 h-7 sm:w-9 sm:h-9 rounded-full border border-gray-500"
             />
-            <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showUserDropdown ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`w-3 h-3 sm:w-4 sm:h-4 text-gray-400 transition-transform ${showUserDropdown ? 'rotate-180' : ''}`} />
           </button>
 
           {showUserDropdown && (
-            <div className="absolute top-full right-0 mt-2 bg-[#1C2333] rounded-lg shadow-lg py-2 min-w-[200px] z-50 border border-gray-700">
+            <div className="absolute top-full right-0 mt-2 bg-[#1C2333] rounded-lg shadow-lg py-2 min-w-[180px] sm:min-w-[200px] z-50 border border-gray-700">
               <div className="px-4 py-3 border-b border-gray-700">
-                <p className="text-sm font-medium text-white">
+                <p className="text-xs sm:text-sm font-medium text-white">
                   {user?.displayName || 'User'}
                 </p>
                 <p className="text-xs text-gray-400">
@@ -287,17 +388,18 @@ const Navbar = ({
       </div>
 
       {/* Bottom Content - Dynamic based on page */}
-      <div className="flex justify-between items-center px-2 pb-2">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center px-1 sm:px-2 pb-2 gap-4 lg:gap-0">
         {pageInfo.showGreeting ? (
           // Home page - Show greeting
           <>
-            <h1 className="text-4xl">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl">
               {getGreeting()}, {user?.displayName || "User"}!
             </h1>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               <Link to={"/shift-form"}>
                 <Button variant="primary" icon={<Plus className="w-4 h-4" />}>
-                  New shift
+                  <span className="hidden sm:inline">New shift</span>
+                  <span className="sm:hidden">New</span>
                 </Button>
               </Link>
             </div>
@@ -306,11 +408,11 @@ const Navbar = ({
           // Other pages - Show page title, filters below, and actions on the right
           <div className="w-full">
             {/* Top row - Page title and action buttons */}
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h1 className="text-4xl font-semibold">{pageInfo.title}</h1>
+            <div className="flex flex-col sm:flex-row justify-between items-start mb-4 gap-4 sm:gap-0">
+              <div className="flex-1">
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold">{pageInfo.title}</h1>
                 {pageInfo.showFilters && (
-                  <p className="text-gray-400 mt-1">
+                  <p className="text-gray-400 mt-1 text-sm sm:text-base">
                     {pageInfo.filterType === "shift" &&
                       "Manage and filter shift assignments"}
                     {pageInfo.filterType === "staff" &&
@@ -321,17 +423,94 @@ const Navbar = ({
                 )}
               </div>
 
-              {/* Right side - Date and Action Buttons */}
-              <div className="flex items-center gap-4"></div>
+              {/* Page-specific Action Buttons - Moved to top on mobile */}
+              <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end">
+                {/* Home Page - Create Shift Button */}
+                {location.pathname === "/" && (
+                  <Link to={"/shift-form"}>
+                    <Button
+                      variant="primary"
+                      icon={<Plus className="w-4 h-4" />}
+                    >
+                      <span className="hidden sm:inline">New shift</span>
+                      <span className="sm:hidden">New</span>
+                    </Button>
+                  </Link>
+                )}
+
+                {/* Room Management Page - Bulk Upload & Add Room */}
+                {location.pathname === "/admin/room-management" && (
+                  <>
+                    <Button
+                      onClick={onBulkUpload}
+                      variant="secondary"
+                      icon={<Upload className="w-4 h-4" />}
+                    >
+                      <span className="hidden sm:inline">Bulk Upload</span>
+                      <span className="sm:hidden">Upload</span>
+                    </Button>
+                    <Button
+                      onClick={onAddRoom}
+                      variant="primary"
+                      icon={<Plus className="w-4 h-4" />}
+                    >
+                      <span className="hidden sm:inline">Add Room</span>
+                      <span className="sm:hidden">Add</span>
+                    </Button>
+                  </>
+                )}
+
+                {/* Staff Management Page - Add Staff Member */}
+                {location.pathname === "/admin/staff-management" && (
+                  <Button
+                    onClick={onAddStaff}
+                    variant="primary"
+                    icon={<UserPlus className="w-4 h-4" />}
+                  >
+                    <span className="hidden sm:inline">Add Staff Member</span>
+                    <span className="sm:hidden">Add Staff</span>
+                  </Button>
+                )}
+
+                {/* Shift Management Page - Create New Shift */}
+                {location.pathname === "/admin/shift-management" && (
+                  <Link to={"/shift-form"}>
+                    <Button
+                      variant="primary"
+                      icon={<Plus className="w-4 h-4" />}
+                    >
+                      <span className="hidden sm:inline">New Shift</span>
+                      <span className="sm:hidden">New</span>
+                    </Button>
+                  </Link>
+                )}
+
+                {/* Create Shift Page - No additional buttons needed */}
+                {location.pathname === "/shift-form" && null}
+
+                {/* Admin Dashboard - Overview Page */}
+                {location.pathname === "/admin" && (
+                  <Link to={"/shift-form"}>
+                    <Button
+                      variant="primary"
+                      icon={<Plus className="w-4 h-4" />}
+                    >
+                      <span className="hidden sm:inline">New shift</span>
+                      <span className="sm:hidden">New</span>
+                    </Button>
+                  </Link>
+                )}
+              </div>
             </div>
-            <div className="flex justify-between items-center">
-              {/* Bottom row - Page-specific filters */}
-              {pageInfo.showFilters && (
-                <div className="flex items-center gap-4">
-                  {/* Shift Management Filters */}
-                  {pageInfo.filterType === "shift" && (
-                    <div className="flex items-center gap-4">
-                      {/* Date Filter */}
+            
+            {/* Bottom row - Page-specific filters */}
+            {pageInfo.showFilters && (
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 overflow-x-auto">
+                {/* Shift Management Filters */}
+                {pageInfo.filterType === "shift" && (
+                  <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-4 w-full sm:w-auto">
+                    {/* Date Filter */}
+                    <div className="w-full sm:w-auto">
                       <FilterInput
                         type="date"
                         variant="dark"
@@ -344,8 +523,10 @@ const Navbar = ({
                           })
                         }
                       />
+                    </div>
 
-                      {/* Shift Type Filter */}
+                    {/* Shift Type Filter */}
+                    <div className="w-full sm:w-auto">
                       <FilterSelect
                         variant="dark"
                         icon={<Clock className="w-4 h-4" />}
@@ -364,8 +545,10 @@ const Navbar = ({
                         </option>
                         <option value="Night (10 PM - 6 AM)">Night</option>
                       </FilterSelect>
+                    </div>
 
-                      {/* Staff Filter */}
+                    {/* Staff Filter */}
+                    <div className="w-full sm:w-32">
                       <FilterInput
                         type="text"
                         variant="dark"
@@ -378,13 +561,15 @@ const Navbar = ({
                           })
                         }
                         placeholder="Search staff..."
-                        className="w-32"
+                        className="w-full"
                       />
                     </div>
-                  )}
+                  </div>
+                )}
 
-                  {/* Staff Management Filters */}
-                  {pageInfo.filterType === "staff" && (
+                {/* Staff Management Filters */}
+                {pageInfo.filterType === "staff" && (
+                  <div className="w-full sm:w-48">
                     <FilterInput
                       type="text"
                       variant="dark"
@@ -397,12 +582,14 @@ const Navbar = ({
                         })
                       }
                       placeholder="Search staff by name or role..."
-                      className="w-48"
+                      className="w-full"
                     />
-                  )}
+                  </div>
+                )}
 
-                  {/* Room Management Filters */}
-                  {pageInfo.filterType === "room" && (
+                {/* Room Management Filters */}
+                {pageInfo.filterType === "room" && (
+                  <div className="w-full sm:w-56">
                     <FilterInput
                       type="text"
                       variant="dark"
@@ -415,84 +602,12 @@ const Navbar = ({
                         })
                       }
                       placeholder="Search rooms by number, type, or status..."
-                      className="w-56"
+                      className="w-full"
                     />
-                  )}
-                </div>
-              )}
-              {/* Page-specific Action Buttons */}
-              <div className="flex items-center gap-3">
-                {/* Home Page - Create Shift Button */}
-                {location.pathname === "/" && (
-                  <Link to={"/shift-form"}>
-                    <Button
-                      variant="primary"
-                      icon={<Plus className="w-4 h-4" />}
-                    >
-                      New shift
-                    </Button>
-                  </Link>
-                )}
-
-                {/* Room Management Page - Bulk Upload & Add Room */}
-                {location.pathname === "/admin/room-management" && (
-                  <>
-                    <Button
-                      onClick={onBulkUpload}
-                      variant="secondary"
-                      icon={<Upload className="w-4 h-4" />}
-                    >
-                      Bulk Upload
-                    </Button>
-                    <Button
-                      onClick={onAddRoom}
-                      variant="primary"
-                      icon={<Plus className="w-4 h-4" />}
-                    >
-                      Add Room
-                    </Button>
-                  </>
-                )}
-
-                {/* Staff Management Page - Add Staff Member */}
-                {location.pathname === "/admin/staff-management" && (
-                  <Button
-                    onClick={onAddStaff}
-                    variant="primary"
-                    icon={<UserPlus className="w-4 h-4" />}
-                  >
-                    Add Staff Member
-                  </Button>
-                )}
-
-                {/* Shift Management Page - Create New Shift */}
-                {location.pathname === "/admin/shift-management" && (
-                  <Link to={"/shift-form"}>
-                    <Button
-                      variant="primary"
-                      icon={<Plus className="w-4 h-4" />}
-                    >
-                      New Shift
-                    </Button>
-                  </Link>
-                )}
-
-                {/* Create Shift Page - No additional buttons needed */}
-                {location.pathname === "/shift-form" && null}
-
-                {/* Admin Dashboard - Overview Page */}
-                {location.pathname === "/admin" && (
-                  <Link to={"/shift-form"}>
-                    <Button
-                      variant="primary"
-                      icon={<Plus className="w-4 h-4" />}
-                    >
-                      New shift
-                    </Button>
-                  </Link>
+                  </div>
                 )}
               </div>
-            </div>
+            )}
           </div>
         )}
       </div>

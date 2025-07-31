@@ -76,38 +76,38 @@ export default function Home() {
   return (
     <div>
       {user ? (
-        <div className="p-6 space-y-8">
+        <div className="p-3 sm:p-6 space-y-6 sm:space-y-8">
           {/* Main Dashboard Content */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
             {/* Today's Schedule */}
-            <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                  <Calendar className="w-5 h-5" />
+            <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl p-4 sm:p-6 shadow-sm">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-3 sm:gap-0">
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
                   Today's Schedule
                 </h2>
                 <Link
                   to="/admin/shift-management"
-                  className="text-purple-600 hover:text-purple-700 text-sm font-medium flex items-center gap-1"
+                  className="text-purple-600 hover:text-purple-700 text-xs sm:text-sm font-medium flex items-center gap-1"
                 >
                   View all <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>
 
               {todaysShifts.length > 0 ? (
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                   {todaysShifts.slice(0, 4).map((shift, index) => (
                     <div
                       key={shift.id || index}
-                      className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-xl"
+                      className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 rounded-xl gap-3 sm:gap-0"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                        <div>
-                          <p className="font-medium text-gray-900 dark:text-white">
+                      <div className="flex items-center gap-2 sm:gap-3 flex-1">
+                        <div className="w-2 h-2 bg-purple-500 rounded-full flex-shrink-0"></div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-sm sm:text-base text-gray-900 dark:text-white truncate">
                             {shift.staffName || "Unassigned"}
                           </p>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                             {shift.shift} •{" "}
                             {shift.rooms?.slice(0, 2).join(", ")}
                             {shift.rooms?.length > 2 &&
@@ -115,7 +115,7 @@ export default function Home() {
                           </p>
                         </div>
                       </div>
-                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full self-start sm:self-center">
                         Active
                       </span>
                     </div>
@@ -148,18 +148,18 @@ export default function Home() {
             </div>
 
             {/* Quick Stats & Actions */}
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {/* Tomorrow's Preview */}
-              <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 sm:p-6 shadow-sm">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4 flex items-center gap-2">
                   <Clock className="w-4 h-4" />
                   Tomorrow's Shifts
                 </h3>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-purple-600 mb-2">
+                  <div className="text-2xl sm:text-3xl font-bold text-purple-600 mb-1 sm:mb-2">
                     {tomorrowShifts.length}
                   </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                     {tomorrowShifts.length === 0
                       ? "No shifts planned"
                       : tomorrowShifts.length === 1
@@ -170,21 +170,21 @@ export default function Home() {
               </div>
 
               {/* Top Performers */}
-              <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 sm:p-6 shadow-sm">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4 flex items-center gap-2">
                   <TrendingUp className="w-4 h-4" />
                   Top Performers
                 </h3>
                 {topStaff.length > 0 ? (
-                  <div className="space-y-3">
+                  <div className="space-y-2 sm:space-y-3">
                     {topStaff.map(([name, count], index) => (
                       <div
                         key={name}
                         className="flex items-center justify-between"
                       >
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
                           <div
-                            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                            className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0 ${
                               index === 0
                                 ? "bg-yellow-100 text-yellow-700"
                                 : index === 1
@@ -194,54 +194,54 @@ export default function Home() {
                           >
                             {index + 1}
                           </div>
-                          <span className="text-sm font-medium text-gray-900 dark:text-white">
+                          <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white truncate">
                             {name}
                           </span>
                         </div>
-                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full ml-2">
                           {count} shifts
                         </span>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-600 dark:text-gray-400 text-center py-4">
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 text-center py-4">
                     No shift data yet
                   </p>
                 )}
               </div>
 
               {/* Quick Actions */}
-              <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 sm:p-6 shadow-sm">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4 flex items-center gap-2">
                   <Activity className="w-4 h-4" />
                   Quick Actions
                 </h3>
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                   <Link
                     to="/admin/shift-management"
-                    className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                    className="flex items-center gap-3 p-2 sm:p-3 bg-gray-50 dark:bg-gray-700 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                   >
-                    <Calendar className="w-4 h-4 text-purple-600" />
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                    <Calendar className="w-4 h-4 text-purple-600 flex-shrink-0" />
+                    <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">
                       Manage Shifts
                     </span>
                   </Link>
                   <Link
                     to="/admin/staff-management"
-                    className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                    className="flex items-center gap-3 p-2 sm:p-3 bg-gray-50 dark:bg-gray-700 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                   >
-                    <Users className="w-4 h-4 text-blue-600" />
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                    <Users className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                    <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">
                       Manage Staff
                     </span>
                   </Link>
                   <Link
                     to="/admin/room-management"
-                    className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                    className="flex items-center gap-3 p-2 sm:p-3 bg-gray-50 dark:bg-gray-700 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                   >
-                    <HomeIcon className="w-4 h-4 text-green-600" />
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                    <HomeIcon className="w-4 h-4 text-green-600 flex-shrink-0" />
+                    <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">
                       Manage Rooms
                     </span>
                   </Link>
@@ -251,25 +251,25 @@ export default function Home() {
           </div>
 
           {/* Recent Activity */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                <Bell className="w-5 h-5" />
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 sm:p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
                 Recent Activity
               </h2>
             </div>
 
             {recentShifts.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {recentShifts.map((shift, index) => (
                   <div
                     key={shift.id || index}
-                    className="p-4 bg-gray-50 dark:bg-gray-700 rounded-xl"
+                    className="p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 rounded-xl"
                   >
-                    <div className="flex items-start gap-3">
-                      <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                    <div className="flex items-start gap-2 sm:gap-3">
+                      <div className="w-2 h-2 bg-green-500 rounded-full mt-1.5 sm:mt-2 flex-shrink-0"></div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                        <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">
                           Shift assigned to {shift.staffName || "Unknown"}
                         </p>
                         <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
@@ -286,9 +286,9 @@ export default function Home() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8">
-                <Activity className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-600 dark:text-gray-400">
+              <div className="text-center py-6 sm:py-8">
+                <Activity className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-2 sm:mb-3" />
+                <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
                   No recent activity
                 </p>
               </div>
@@ -296,8 +296,8 @@ export default function Home() {
           </div>
         </div>
       ) : (
-        <div className="min-h-screen flex items-center justify-center p-6">
-          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-lg p-8 max-w-lg w-full text-center">
+        <div className="min-h-screen flex items-center justify-center p-4 sm:p-6">
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-lg p-6 sm:p-8 max-w-lg w-full text-center">
             <div className="mb-6">
               <div className="bg-purple-500 p-3 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
                 <HomeIcon className="w-8 h-8 text-white" />

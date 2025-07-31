@@ -27,22 +27,22 @@ const TableNew = ({
   onDeleteAction,
 }: TableNewProps) => {
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-md mt-6">
+    <div className="bg-white rounded-2xl p-3 sm:p-6 shadow-md mt-6">
       {/* Header */}
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3 sm:gap-0">
         <div>
-          <h2 className="text-xl font-semibold">{title}</h2>
-          <p className="text-gray-500 text-sm">{subtitle}</p>
+          <h2 className="text-lg sm:text-xl font-semibold">{title}</h2>
+          <p className="text-gray-500 text-xs sm:text-sm">{subtitle}</p>
         </div>
 
         {/* Refresh Button */}
         <Button variant="default" icon={<RefreshCw className="w-4 h-4" />}>
-          Refresh
+          <span className="hidden sm:inline">Refresh</span>
         </Button>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto">
+      {/* Desktop Table */}
+      <div className="hidden lg:block overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="text-gray-500">
@@ -108,6 +108,74 @@ const TableNew = ({
           </tbody>
         </table>
       </div>
+
+      {/* Mobile Card Layout */}
+      <div className="lg:hidden space-y-3">
+        {data.map((row, index) => (
+          <div
+            key={row.id || index}
+            className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+          >
+            {/* Mobile card content */}
+            <div className="space-y-2">
+              {columns.map((column) => (
+                <div key={column.key} className="flex justify-between items-start">
+                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                    {column.header}:
+                  </span>
+                  <span className="text-sm text-gray-900 text-right ml-2 flex-1">
+                    {column.render
+                      ? column.render(row[column.key], row)
+                      : row[column.key]}
+                  </span>
+                </div>
+              ))}
+            </div>
+            
+            {/* Mobile Actions */}
+            <div className="flex items-center justify-end gap-2 mt-4 pt-3 border-t border-gray-200">
+              {onEditAction && (
+                <Button
+                  onClick={() => onEditAction(row)}
+                  variant="default"
+                  size="sm"
+                  icon={<Edit className="w-3 h-3" />}
+                  title="Edit"
+                >
+                  Edit
+                </Button>
+              )}
+              {onDeleteAction && (
+                <Button
+                  onClick={() => onDeleteAction(row)}
+                  variant="default"
+                  size="sm"
+                  icon={<Trash2 className="w-3 h-3" />}
+                  title="Delete"
+                >
+                  Delete
+                </Button>
+              )}
+              {onRowAction && (
+                <button
+                  onClick={() => onRowAction(row)}
+                  className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-100"
+                  title="View details"
+                >
+                  <ArrowRight className="w-3 h-3 text-gray-500" />
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Empty state */}
+      {data.length === 0 && (
+        <div className="text-center py-8">
+          <p className="text-gray-500 text-sm">No data available</p>
+        </div>
+      )}
     </div>
   );
 };

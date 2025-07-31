@@ -17,6 +17,26 @@ body {
   font-family: "Inter", sans-serif;
   background-color: var(--color-background);
   color: var(--color-foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ensure proper touch targets on mobile */
+@media (max-width: 768px) {
+  button, 
+  a,
+  .btn-primary,
+  .btn-secondary {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Improve text readability on mobile */
+@media (max-width: 640px) {
+  html {
+    font-size: 14px;
+  }
 }
 
 /* Component utility classes based on design system */

@@ -194,23 +194,23 @@ const ShiftFormPage = () => {
 
   return (
     <div className="">
-      <div className="p-6 space-y-6">
+      <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
         {/* Form Section */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm">
-          <form onSubmit={handleSubmit} className="space-y-8">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 sm:p-6 shadow-sm">
+          <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
             {/* Basic Information Section */}
-            <div className="space-y-6">
-              <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-purple-600" />
+            <div className="space-y-4 sm:space-y-6">
+              <div className="border-b border-gray-200 dark:border-gray-700 pb-3 sm:pb-4">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
                   Shift Details
                 </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
                   Set the date and time for this shift
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 {/* Date Selector */}
                 <div>
                   <Input
@@ -242,13 +242,13 @@ const ShiftFormPage = () => {
             </div>
 
             {/* Staff Assignment Section */}
-            <div className="space-y-6">
-              <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                  <Users className="w-5 h-5 text-blue-600" />
+            <div className="space-y-4 sm:space-y-6">
+              <div className="border-b border-gray-200 dark:border-gray-700 pb-3 sm:pb-4">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <Users className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
                   Staff Assignment
                 </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
                   Choose who will work this shift
                 </p>
               </div>
@@ -273,11 +273,11 @@ const ShiftFormPage = () => {
                 />
 
                 {showCustomStaff && (
-                  <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-xl">
-                    <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+                  <div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 rounded-xl">
+                    <h4 className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white mb-2 sm:mb-3">
                       Add New Staff Member
                     </h4>
-                    <div className="flex gap-3">
+                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                       <div className="flex-1">
                         <Input
                           id="custom-staff"
@@ -316,9 +316,9 @@ const ShiftFormPage = () => {
                 )}
 
                 {formData.staffName && !showCustomStaff && (
-                  <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
-                    <p className="text-sm text-green-800 dark:text-green-200 flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4" />
+                  <div className="mt-2 sm:mt-3 p-2 sm:p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
+                    <p className="text-xs sm:text-sm text-green-800 dark:text-green-200 flex items-center gap-2">
+                      <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" />
                       Selected:{" "}
                       <span className="font-medium">{formData.staffName}</span>
                     </p>
@@ -328,13 +328,13 @@ const ShiftFormPage = () => {
             </div>
 
             {/* Room Assignment Section */}
-            <div className="space-y-6">
-              <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                  <HomeIcon className="w-5 h-5 text-green-600" />
+            <div className="space-y-4 sm:space-y-6">
+              <div className="border-b border-gray-200 dark:border-gray-700 pb-3 sm:pb-4">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <HomeIcon className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
                   Room Assignment
                 </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
                   Select which rooms need to be cleaned during this shift
                 </p>
               </div>
@@ -355,8 +355,8 @@ const ShiftFormPage = () => {
                 />
 
                 {formData.rooms.length > 0 && (
-                  <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
-                    <p className="text-sm text-blue-800 dark:text-blue-200 flex items-center gap-2">
+                  <div className="mt-2 sm:mt-3 p-2 sm:p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+                    <p className="text-xs sm:text-sm text-blue-800 dark:text-blue-200 flex items-center gap-2">
                       <HomeIcon className="w-4 h-4" />
                       Selected rooms:{" "}
                       <span className="font-medium">
@@ -367,9 +367,9 @@ const ShiftFormPage = () => {
                 )}
 
                 {rooms.length === 0 && (
-                  <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl">
-                    <p className="text-sm text-yellow-800 dark:text-yellow-200 flex items-center gap-2">
-                      <AlertCircle className="w-4 h-4" />
+                  <div className="mt-2 sm:mt-3 p-2 sm:p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl">
+                    <p className="text-xs sm:text-sm text-yellow-800 dark:text-yellow-200 flex items-center gap-2">
+                      <AlertCircle className="w-3 h-3 sm:w-4 sm:h-4" />
                       No rooms available. Add rooms in Room Management first.
                     </p>
                   </div>
@@ -378,13 +378,13 @@ const ShiftFormPage = () => {
             </div>
 
             {/* Additional Information Section */}
-            <div className="space-y-6">
-              <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-gray-600" />
+            <div className="space-y-4 sm:space-y-6">
+              <div className="border-b border-gray-200 dark:border-gray-700 pb-3 sm:pb-4">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
                   Additional Information
                 </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
                   Add any special instructions or notes for this shift
                 </p>
               </div>
@@ -402,9 +402,9 @@ const ShiftFormPage = () => {
             </div>
 
             {/* Submit Section */}
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-gray-600 dark:text-gray-400">
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-4 sm:pt-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+                <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                   Review all details before creating the shift
                 </div>
                 <Button
@@ -412,10 +412,16 @@ const ShiftFormPage = () => {
                   variant="primary"
                   disabled={loading}
                   loading={loading}
-                  icon={loading ? undefined : <Save className="w-4 h-4" />}
+                  icon={loading ? undefined : <Save className="w-3 h-3 sm:w-4 sm:h-4" />}
                   size="lg"
+                  className="w-full sm:w-auto"
                 >
-                  {loading ? "Creating Shift..." : "Create Shift Assignment"}
+                  <span className="hidden sm:inline">
+                    {loading ? "Creating Shift..." : "Create Shift Assignment"}
+                  </span>
+                  <span className="sm:hidden">
+                    {loading ? "Creating..." : "Create Shift"}
+                  </span>
                 </Button>
               </div>
             </div>
