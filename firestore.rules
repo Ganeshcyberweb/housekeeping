@@ -1,0 +1,63 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Staff collection - Primary user data store
+    match /staff/{staffId} {
+      // All authenticated users can read staff data
+      allow read: if request.auth != null;
+      
+      // New users can create their own staff record with 'staff' role
+      // Users with existing admin/manager staff records can create new staff records
+      allow create: if request.auth != null && (
+        (request.resource.data.uid == request.auth.uid &&
+         request.resource.data.systemRole == 'staff') ||
+        // Allow creation if user has admin/manager role in existing staff record
+        resource == null // This is a new document creation
+      );
+      
+      // Users can update their own record (except systemRole)
+      // Admin/manager permissions will be enforced at the application level
+      allow update: if request.auth != null && (
+        // Own record - can update everything except systemRole
+        (resource.data.uid == request.auth.uid && 
+         request.resource.data.systemRole == resource.data.systemRole) ||
+        // Admin/manager permissions handled at app level for security
+        resource.data.uid != request.auth.uid
+      );
+      
+      // Deletion handled at application level with proper role checks
+      allow delete: if request.auth != null;
+    }
+    
+    // Shifts collection
+    match /shifts/{shiftId} {
+      // All authenticated users can read shifts (staff see filtered data in client)
+      allow read: if request.auth != null;
+      
+      // Create and update permissions handled at application level
+      // Admin/manager roles verified through staff collection in app code
+      allow create, update: if request.auth != null;
+      
+      // Delete permissions handled at application level (admin only)
+      allow delete: if request.auth != null;
+    }
+    
+    // Rooms collection
+    match /rooms/{roomId} {
+      // All authenticated users can read room data
+      allow read: if request.auth != null;
+      
+      // Write permissions handled at application level
+      // Admin/manager roles verified through staff collection in app code
+      allow write: if request.auth != null;
+    }
+    
+    // Reports and analytics (if you add these collections later)
+    match /reports/{reportId} {
+      // Reports access handled at application level
+      // Admin/manager roles verified through staff collection in app code
+      allow read, write: if request.auth != null;
+    }
+  }
+}

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Timestamp } from "firebase/firestore";
+import { useAuth } from "../context/useAuth";
 import TableNew from "./TableNew";
 import Tag from "./ui/Tag";
 import EditModal from "./EditModal";
@@ -14,6 +15,7 @@ import {
   FileText,
   TrendingUp,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 interface ShiftManagementProps {
   dateFilter?: string;
@@ -31,6 +33,7 @@ const ShiftManagement = ({
   shiftFilter: externalShiftFilter,
   staffFilter: externalStaffFilter,
 }: ShiftManagementProps = {}) => {
+  const { hasPermission } = useAuth();
   const { shifts, error, fetchShifts, updateShift, deleteShift, clearError } =
     useShiftsStore();
 
@@ -100,9 +103,6 @@ const ShiftManagement = ({
     }
   };
 
-
-
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       weekday: "short",
@@ -123,13 +123,15 @@ const ShiftManagement = ({
   };
 
   // Calculate shift analytics
-  const today = new Date().toISOString().split('T')[0];
-  const todaysShifts = shifts.filter(shift => shift.date === today);
-  const morningShifts = shifts.filter(shift => shift.shift === 'Morning (6 AM - 2 PM)');
-  
+  const today = new Date().toISOString().split("T")[0];
+  const todaysShifts = shifts.filter((shift) => shift.date === today);
+  const morningShifts = shifts.filter(
+    (shift) => shift.shift === "Morning (6 AM - 2 PM)"
+  );
+
   // Get unique staff count
-  const uniqueStaff = new Set(shifts.map(shift => shift.staffName)).size;
-  
+  const uniqueStaff = new Set(shifts.map((shift) => shift.staffName)).size;
+
   return (
     <div>
       {/* Analytics Cards */}
@@ -140,44 +142,46 @@ const ShiftManagement = ({
           value={todaysShifts.length}
           icon={<Calendar className="w-5 h-5" />}
           change={{
-            value: todaysShifts.length > 0 ? 'Active' : 'None today',
-            type: todaysShifts.length > 0 ? 'increase' : 'neutral'
+            value: todaysShifts.length > 0 ? "Active" : "None today",
+            type: todaysShifts.length > 0 ? "increase" : "neutral",
           }}
           className="w-full"
         />
-        
+
         <AnalyticsCard
           title="Total Shifts"
           subtitle="All assignments"
           value={shifts.length}
           icon={<Clock className="w-5 h-5" />}
           change={{
-            value: shifts.length > 20 ? 'Very active' : 'Building up',
-            type: shifts.length > 20 ? 'increase' : 'neutral'
+            value: shifts.length > 20 ? "Very active" : "Building up",
+            type: shifts.length > 20 ? "increase" : "neutral",
           }}
           className="w-full"
         />
-        
+
         <AnalyticsCard
           title="Active Staff"
           subtitle="Team members assigned"
           value={uniqueStaff}
           icon={<Users className="w-5 h-5" />}
           change={{
-            value: uniqueStaff > 5 ? 'Well distributed' : 'Growing',
-            type: uniqueStaff > 5 ? 'increase' : 'neutral'
+            value: uniqueStaff > 5 ? "Well distributed" : "Growing",
+            type: uniqueStaff > 5 ? "increase" : "neutral",
           }}
           className="w-full"
         />
-        
+
         <AnalyticsCard
           title="Morning Shifts"
           subtitle="6 AM - 2 PM shifts"
           value={morningShifts.length}
           icon={<TrendingUp className="w-5 h-5" />}
           change={{
-            value: `${Math.round((morningShifts.length / (shifts.length || 1)) * 100)}% of total`,
-            type: 'neutral'
+            value: `${Math.round(
+              (morningShifts.length / (shifts.length || 1)) * 100
+            )}% of total`,
+            type: "neutral",
           }}
           className="w-full"
         />
@@ -222,11 +226,9 @@ const ShiftManagement = ({
           <p className="text-gray-600 dark:text-gray-400 mb-6 text-sm">
             No shift assignments have been created yet.
           </p>
-          <a href="/shift-form">
-            <Button variant="primary">
-              Create First Shift
-            </Button>
-          </a>
+          <Link to="/shift-form">
+            <Button variant="primary">Create First Shift</Button>
+          </Link>
         </div>
       )}
 
@@ -244,9 +246,7 @@ const ShiftManagement = ({
             {
               key: "shift",
               header: "Shift",
-              render: (value) => (
-                <Tag>{value}</Tag>
-              ),
+              render: (value) => <Tag>{value}</Tag>,
             },
             {
               key: "staffName",
@@ -263,15 +263,9 @@ const ShiftManagement = ({
               render: (value) => (
                 <div className="flex flex-wrap gap-1">
                   {value.slice(0, 3).map((room: string, index: number) => (
-                    <Tag key={index}>
-                      {room}
-                    </Tag>
+                    <Tag key={index}>{room}</Tag>
                   ))}
-                  {value.length > 3 && (
-                    <Tag>
-                      +{value.length - 3}
-                    </Tag>
-                  )}
+                  {value.length > 3 && <Tag>+{value.length - 3}</Tag>}
                 </div>
               ),
             },
@@ -297,7 +291,11 @@ const ShiftManagement = ({
           ]}
           data={filteredShifts}
           onEditAction={(row) => handleEditShift(row)}
-          onDeleteAction={(row) => setDeletingShift(row.id)}
+          onDeleteAction={
+            hasPermission("canDeleteShifts")
+              ? (row) => setDeletingShift(row.id)
+              : undefined
+          }
         />
       )}
 

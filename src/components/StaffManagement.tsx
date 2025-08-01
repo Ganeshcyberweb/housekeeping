@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Timestamp } from "firebase/firestore";
+import { useAuth } from "../context/useAuth";
 import TableNew from "./TableNew";
 import Tag from "./ui/Tag";
 import Button from "./ui/Button";
@@ -28,6 +29,7 @@ const StaffManagement = ({
   showAddStaffModal: externalShowAddStaffModal,
   setShowAddStaffModal: externalSetShowAddStaffModal,
 }: StaffManagementProps = {}) => {
+  const { isAdmin } = useAuth();
   const {
     staff,
     error: staffError,
@@ -57,16 +59,29 @@ const StaffManagement = ({
   const [staffToDelete, setStaffToDelete] = useState<Staff | null>(null);
   const [showDeleteWarning, setShowDeleteWarning] = useState(false);
   const [assignedShiftsCount, setAssignedShiftsCount] = useState(0);
-  const [newStaff, setNewStaff] = useState({ name: "", role: "", phone: "" });
+  const [newStaff, setNewStaff] = useState({
+    name: "",
+    jobRole: "",
+    systemRole: "staff" as "admin" | "manager" | "staff",
+    phone: "",
+  });
   const [filteredStaff, setFilteredStaff] = useState<Staff[]>([]);
 
   // Use external search filter if provided, otherwise use empty string
   const searchFilter = externalSearchFilter || "";
 
   useEffect(() => {
-    if (staff.length === 0) {
-      fetchStaff();
-    }
+    const loadStaffData = async () => {
+      if (staff.length === 0) {
+        try {
+          await fetchStaff();
+        } catch (error) {
+          console.error("Error fetching staff data in StaffManagement:", error);
+        }
+      }
+    };
+
+    loadStaffData();
   }, [fetchStaff, staff.length]);
 
   // Filter staff whenever search changes
@@ -77,14 +92,17 @@ const StaffManagement = ({
       filtered = filtered.filter(
         (staffMember) =>
           staffMember.name.toLowerCase().includes(searchFilter.toLowerCase()) ||
-          staffMember.role?.toLowerCase().includes(searchFilter.toLowerCase())
+          staffMember.jobRole
+            ?.toLowerCase()
+            .includes(searchFilter.toLowerCase()) ||
+          staffMember.systemRole
+            ?.toLowerCase()
+            .includes(searchFilter.toLowerCase())
       );
     }
 
     setFilteredStaff(filtered);
   }, [staff, searchFilter]);
-
-
 
   // Staff management functions
   const handleAddStaff = async () => {
@@ -93,11 +111,12 @@ const StaffManagement = ({
     try {
       const staffData: any = {
         name: newStaff.name.trim(),
+        systemRole: newStaff.systemRole,
       };
 
-      // Only add role and phone if they have values
-      if (newStaff.role.trim()) {
-        staffData.role = newStaff.role.trim();
+      // Only add jobRole and phone if they have values
+      if (newStaff.jobRole.trim()) {
+        staffData.jobRole = newStaff.jobRole.trim();
       }
 
       if (newStaff.phone.trim()) {
@@ -105,7 +124,7 @@ const StaffManagement = ({
       }
 
       await addStaff(staffData);
-      setNewStaff({ name: "", role: "", phone: "" });
+      setNewStaff({ name: "", jobRole: "", systemRole: "staff", phone: "" });
       setShowAddStaffModal(false);
     } catch (err) {
       // Error is handled in the store
@@ -122,9 +141,14 @@ const StaffManagement = ({
     try {
       const cleanUpdates: any = {
         name: updates.name?.trim(),
-        role: updates.role?.trim() || "", // Pass empty string to delete field
+        jobRole: updates.jobRole?.trim() || "", // Pass empty string to delete field
         phone: updates.phone?.trim() || "", // Pass empty string to delete field
       };
+
+      // Only admins can update systemRole
+      if (isAdmin() && updates.systemRole) {
+        cleanUpdates.systemRole = updates.systemRole;
+      }
 
       await updateStaff(editingStaff.id, cleanUpdates);
       setEditingStaff(null);
@@ -188,18 +212,24 @@ const StaffManagement = ({
   };
 
   // Calculate staff analytics
-  const staffWithRoles = staff.filter(member => member.role && member.role.trim() !== '');
-  const staffWithPhone = staff.filter(member => member.phone && member.phone.trim() !== '');
-  
-  // Get role distribution
-  const roles = staff.reduce((acc, member) => {
-    const role = member.role || 'Unassigned';
+  const staffWithJobRoles = staff.filter(
+    (member) => member.jobRole && member.jobRole.trim() !== ""
+  );
+  const staffWithPhone = staff.filter(
+    (member) => member.phone && member.phone.trim() !== ""
+  );
+
+  // Get job role distribution
+  const jobRoles = staff.reduce((acc, member) => {
+    const role = member.jobRole || "Unassigned";
     acc[role] = (acc[role] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
-  
-  const mostCommonRole = Object.entries(roles).sort(([,a], [,b]) => b - a)[0];
-  
+
+  const mostCommonJobRole = Object.entries(jobRoles).sort(
+    ([, a], [, b]) => b - a
+  )[0];
+
   return (
     <div>
       {/* Analytics Cards */}
@@ -210,44 +240,54 @@ const StaffManagement = ({
           value={staff.length}
           icon={<Users className="w-5 h-5" />}
           change={{
-            value: staff.length > 10 ? 'Well staffed' : 'Growing team',
-            type: staff.length > 10 ? 'increase' : 'neutral'
+            value: staff.length > 10 ? "Well staffed" : "Growing team",
+            type: staff.length > 10 ? "increase" : "neutral",
           }}
           className="w-full"
         />
-        
+
         <AnalyticsCard
-          title="With Roles"
+          title="With Job Roles"
           subtitle="Assigned positions"
-          value={staffWithRoles.length}
+          value={staffWithJobRoles.length}
           icon={<Award className="w-5 h-5" />}
           change={{
-            value: `${Math.round((staffWithRoles.length / (staff.length || 1)) * 100)}% assigned`,
-            type: (staffWithRoles.length / (staff.length || 1)) > 0.8 ? 'increase' : 'neutral'
+            value: `${Math.round(
+              (staffWithJobRoles.length / (staff.length || 1)) * 100
+            )}% assigned`,
+            type:
+              staffWithJobRoles.length / (staff.length || 1) > 0.8
+                ? "increase"
+                : "neutral",
           }}
           className="w-full"
         />
-        
+
         <AnalyticsCard
           title="Contact Info"
           subtitle="Staff with phone numbers"
           value={staffWithPhone.length}
           icon={<Phone className="w-5 h-5" />}
           change={{
-            value: `${Math.round((staffWithPhone.length / (staff.length || 1)) * 100)}% complete`,
-            type: (staffWithPhone.length / (staff.length || 1)) > 0.7 ? 'increase' : 'decrease'
+            value: `${Math.round(
+              (staffWithPhone.length / (staff.length || 1)) * 100
+            )}% complete`,
+            type:
+              staffWithPhone.length / (staff.length || 1) > 0.7
+                ? "increase"
+                : "decrease",
           }}
           className="w-full"
         />
-        
+
         <AnalyticsCard
-          title="Most Common Role"
+          title="Most Common Job Role"
           subtitle="Primary position"
-          value={mostCommonRole ? mostCommonRole[1] : 0}
+          value={mostCommonJobRole ? mostCommonJobRole[1] : 0}
           icon={<TrendingUp className="w-5 h-5" />}
           change={{
-            value: mostCommonRole ? mostCommonRole[0] : 'None',
-            type: 'neutral'
+            value: mostCommonJobRole ? mostCommonJobRole[0] : "None",
+            type: "neutral",
           }}
           className="w-full"
         />
@@ -309,14 +349,31 @@ const StaffManagement = ({
               ),
             },
             {
-              key: "role",
-              header: "Role",
+              key: "jobRole",
+              header: "Job Role",
               render: (value) =>
                 value ? (
                   <Tag>{value}</Tag>
                 ) : (
                   <span className="text-gray-500">—</span>
                 ),
+            },
+            {
+              key: "systemRole",
+              header: "System Role",
+              render: (value) => (
+                <Tag
+                  variant={
+                    value === "admin"
+                      ? "danger"
+                      : value === "manager"
+                      ? "warning"
+                      : "default"
+                  }
+                >
+                  {value}
+                </Tag>
+              ),
             },
             {
               key: "phone",
@@ -341,7 +398,9 @@ const StaffManagement = ({
           ]}
           data={filteredStaff}
           onEditAction={(row) => handleEditStaff(row)}
-          onDeleteAction={(row) => handleDeleteStaffClick(row)}
+          onDeleteAction={
+            isAdmin() ? (row) => handleDeleteStaffClick(row) : undefined
+          }
         />
       )}
 
@@ -372,18 +431,43 @@ const StaffManagement = ({
 
                 <div>
                   <label className="block text-sm font-medium text-gray-900 dark:text-white mb-1">
-                    Role
+                    Job Role
                   </label>
                   <input
                     type="text"
-                    value={newStaff.role}
+                    value={newStaff.jobRole}
                     onChange={(e) =>
-                      setNewStaff({ ...newStaff, role: e.target.value })
+                      setNewStaff({ ...newStaff, jobRole: e.target.value })
                     }
                     className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
                     placeholder="e.g., Cleaner, Supervisor"
                   />
                 </div>
+
+                {isAdmin() && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-900 dark:text-white mb-1">
+                      System Role
+                    </label>
+                    <select
+                      value={newStaff.systemRole}
+                      onChange={(e) =>
+                        setNewStaff({
+                          ...newStaff,
+                          systemRole: e.target.value as
+                            | "admin"
+                            | "manager"
+                            | "staff",
+                        })
+                      }
+                      className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                    >
+                      <option value="staff">Staff</option>
+                      <option value="manager">Manager</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-900 dark:text-white mb-1">
@@ -405,7 +489,12 @@ const StaffManagement = ({
                 <Button
                   onClick={() => {
                     setShowAddStaffModal(false);
-                    setNewStaff({ name: "", role: "", phone: "" });
+                    setNewStaff({
+                      name: "",
+                      jobRole: "",
+                      systemRole: "staff",
+                      phone: "",
+                    });
                   }}
                   variant="secondary"
                 >
@@ -450,17 +539,46 @@ const StaffManagement = ({
 
                 <div>
                   <label className="block text-sm font-medium text-gray-900 dark:text-white mb-1">
-                    Role
+                    Job Role
                   </label>
                   <input
                     type="text"
-                    value={editingStaff.role || ""}
+                    value={editingStaff.jobRole || ""}
                     onChange={(e) =>
-                      setEditingStaff({ ...editingStaff, role: e.target.value })
+                      setEditingStaff({
+                        ...editingStaff,
+                        jobRole: e.target.value,
+                      })
                     }
                     className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                    placeholder="e.g., Cleaner, Supervisor"
                   />
                 </div>
+
+                {isAdmin() && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-900 dark:text-white mb-1">
+                      System Role
+                    </label>
+                    <select
+                      value={editingStaff.systemRole}
+                      onChange={(e) =>
+                        setEditingStaff({
+                          ...editingStaff,
+                          systemRole: e.target.value as
+                            | "admin"
+                            | "manager"
+                            | "staff",
+                        })
+                      }
+                      className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                    >
+                      <option value="staff">Staff</option>
+                      <option value="manager">Manager</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-900 dark:text-white mb-1">
@@ -491,7 +609,8 @@ const StaffManagement = ({
                   onClick={() =>
                     handleSaveStaffEdit({
                       name: editingStaff.name,
-                      role: editingStaff.role,
+                      jobRole: editingStaff.jobRole,
+                      systemRole: editingStaff.systemRole,
                       phone: editingStaff.phone,
                     })
                   }
@@ -543,10 +662,7 @@ const StaffManagement = ({
                 >
                   Cancel
                 </Button>
-                <Button
-                  onClick={handleConfirmDelete}
-                  variant="danger"
-                >
+                <Button onClick={handleConfirmDelete} variant="danger">
                   Delete Staff & Shifts
                 </Button>
               </div>

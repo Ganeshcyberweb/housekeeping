@@ -1,5 +1,4 @@
-import type { ReactNode } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import ShiftFormPage from "./pages/ShiftFormPage";
 import AdminPage from "./pages/AdminPage";
 import AdminShiftManagementPage from "./pages/AdminShiftManagementPage";
@@ -7,24 +6,12 @@ import AdminStaffManagementPage from "./pages/AdminStaffManagementPage";
 import AdminRoomManagementPage from "./pages/AdminRoomManagementPage";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
+import UnauthorizedPage from "./pages/UnauthorizedPage";
 import { AuthProvider } from "./context/AuthContextProvider";
-import { useAuth } from "./context/useAuth";
 import HomePage from "./pages/HomePage";
 import MainLayout from "./components/MainLayout";
+import RoleBasedRoute from "./components/RoleBasedRoute";
 
-function PrivateRoute({ children }: { children: ReactNode }) {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  return user ? children : <Navigate to="/login" replace />;
-}
 
 function App() {
   return (
@@ -33,6 +20,7 @@ function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
+          <Route path="/unauthorized" element={<UnauthorizedPage />} />
           <Route
             path="/"
             element={
@@ -44,51 +32,51 @@ function App() {
           <Route
             path="/shift-form"
             element={
-              <PrivateRoute>
+              <RoleBasedRoute allowedRoles={['admin', 'manager']}>
                 <MainLayout>
                   <ShiftFormPage />
                 </MainLayout>
-              </PrivateRoute>
+              </RoleBasedRoute>
             }
           />
           <Route
             path="/admin"
             element={
-              <PrivateRoute>
+              <RoleBasedRoute allowedRoles={['admin']}>
                 <MainLayout>
                   <AdminPage />
                 </MainLayout>
-              </PrivateRoute>
+              </RoleBasedRoute>
             }
           />
           <Route
             path="/admin/shift-management"
             element={
-              <PrivateRoute>
+              <RoleBasedRoute allowedRoles={['admin', 'manager']}>
                 <MainLayout>
                   <AdminShiftManagementPage />
                 </MainLayout>
-              </PrivateRoute>
+              </RoleBasedRoute>
             }
           />
           <Route
             path="/admin/staff-management"
             element={
-              <PrivateRoute>
+              <RoleBasedRoute allowedRoles={['admin', 'manager']}>
                 <MainLayout>
                   <AdminStaffManagementPage />
                 </MainLayout>
-              </PrivateRoute>
+              </RoleBasedRoute>
             }
           />
           <Route
             path="/admin/room-management"
             element={
-              <PrivateRoute>
+              <RoleBasedRoute allowedRoles={['admin', 'manager']}>
                 <MainLayout>
                   <AdminRoomManagementPage />
                 </MainLayout>
-              </PrivateRoute>
+              </RoleBasedRoute>
             }
           />
         </Routes>

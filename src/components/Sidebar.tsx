@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
+import { ROLE_LABELS } from "../types/user";
 import {
   Menu,
   Home,
@@ -10,18 +11,33 @@ import {
   LogOut,
   LogIn,
   UserPlus,
+  Calendar,
+  Shield,
+  Crown,
+  User,
 } from "lucide-react";
 
 const Sidebar = () => {
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, userProfile, signOut, hasPermission } = useAuth();
 
   const handleLogout = async () => {
     try {
-      //   await logout();
-      console.log("Logout not implemented yet");
+      await signOut();
     } catch (error) {
       console.error("Logout failed:", error);
+    }
+  };
+
+  const getRoleIcon = () => {
+    if (!userProfile) return <User className="w-4 h-4" />;
+    switch (userProfile.role) {
+      case 'admin':
+        return <Crown className="w-4 h-4 text-red-600" />;
+      case 'manager':
+        return <Shield className="w-4 h-4 text-blue-600" />;
+      case 'staff':
+        return <User className="w-4 h-4 text-gray-600" />;
     }
   };
 
@@ -57,20 +73,36 @@ const Sidebar = () => {
           {user && (
             <div className="mb-6 px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
               <div className="flex items-center space-x-3">
-                {user.photoURL && (
+                {user.photoURL ? (
                   <img
                     src={user.photoURL}
                     alt="Profile"
                     className="w-8 h-8 rounded-full"
                   />
+                ) : (
+                  <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                    <span className="text-xs font-medium text-purple-600">
+                      {user.displayName?.charAt(0)?.toUpperCase() || user.email?.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
                 )}
-                <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                     {user.displayName || user.email?.split("@")[0]}
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {user.email}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      {user.email}
+                    </p>
+                  </div>
+                  {userProfile && (
+                    <div className="flex items-center gap-1 mt-1">
+                      {getRoleIcon()}
+                      <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                        {ROLE_LABELS[userProfile.role]}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -100,86 +132,161 @@ const Sidebar = () => {
 
             {user && (
               <>
-                {/* Admin Dashboard */}
-                <li>
-                  <Link
-                    to="/admin"
-                    className={`flex items-center p-2 rounded-lg group ${
-                      isActive("/admin")
-                        ? "bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-100"
-                        : "text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
-                    }`}
-                  >
-                    <LayoutDashboard
-                      className={`shrink-0 w-5 h-5 transition duration-75 ${
+                {/* Admin Dashboard - Only for Admin */}
+                {hasPermission('canManageUsers') && (
+                  <li>
+                    <Link
+                      to="/admin"
+                      className={`flex items-center p-2 rounded-lg group ${
                         isActive("/admin")
-                          ? "text-blue-900 dark:text-blue-100"
-                          : "text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white"
+                          ? "bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-100"
+                          : "text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
                       }`}
-                    />
-                    <span className="flex-1 ms-3 whitespace-nowrap">
-                      Dashboard
-                    </span>
-                  </Link>
-                </li>
+                    >
+                      <LayoutDashboard
+                        className={`shrink-0 w-5 h-5 transition duration-75 ${
+                          isActive("/admin")
+                            ? "text-blue-900 dark:text-blue-100"
+                            : "text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white"
+                        }`}
+                      />
+                      <span className="flex-1 ms-3 whitespace-nowrap">
+                        Admin Dashboard
+                      </span>
+                    </Link>
+                  </li>
+                )}
 
-                {/* Shift Form */}
-                <li>
-                  <Link
-                    to="/shift-form"
-                    className={`flex items-center p-2 rounded-lg group ${
-                      isActive("/shift-form")
-                        ? "bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-100"
-                        : "text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
-                    }`}
-                  >
-                    <FileText
-                      className={`shrink-0 w-5 h-5 transition duration-75 ${
+                {/* Shift Form - Admin and Manager only */}
+                {hasPermission('canAssignShifts') && (
+                  <li>
+                    <Link
+                      to="/shift-form"
+                      className={`flex items-center p-2 rounded-lg group ${
                         isActive("/shift-form")
-                          ? "text-blue-900 dark:text-blue-100"
-                          : "text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white"
+                          ? "bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-100"
+                          : "text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
                       }`}
-                    />
-                    <span className="flex-1 ms-3 whitespace-nowrap">
-                      Create Shift
-                    </span>
-                  </Link>
-                </li>
+                    >
+                      <FileText
+                        className={`shrink-0 w-5 h-5 transition duration-75 ${
+                          isActive("/shift-form")
+                            ? "text-blue-900 dark:text-blue-100"
+                            : "text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white"
+                        }`}
+                      />
+                      <span className="flex-1 ms-3 whitespace-nowrap">
+                        Create Shift
+                      </span>
+                    </Link>
+                  </li>
+                )}
 
-                {/* Divider */}
-                <li className="pt-4 mt-4 space-y-2 font-medium border-t border-gray-200 dark:border-gray-700">
-                  <p className="px-3 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                    Management
-                  </p>
-                </li>
+                {/* My Shifts - Staff can see their own shifts */}
+                {hasPermission('canViewOwnShiftsOnly') && (
+                  <li>
+                    <Link
+                      to="/my-shifts"
+                      className={`flex items-center p-2 rounded-lg group ${
+                        isActive("/my-shifts")
+                          ? "bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-100"
+                          : "text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+                      }`}
+                    >
+                      <Calendar
+                        className={`shrink-0 w-5 h-5 transition duration-75 ${
+                          isActive("/my-shifts")
+                            ? "text-blue-900 dark:text-blue-100"
+                            : "text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white"
+                        }`}
+                      />
+                      <span className="flex-1 ms-3 whitespace-nowrap">
+                        My Shifts
+                      </span>
+                    </Link>
+                  </li>
+                )}
 
-                {/* Staff Management */}
-                <li>
-                  <a
-                    href="#"
-                    className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group"
-                  >
-                    <Users className="shrink-0 w-5 h-5 text-gray-500 transition duration-75 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white" />
-                    <span className="flex-1 ms-3 whitespace-nowrap">Staff</span>
-                    <span className="inline-flex items-center justify-center px-2 ms-3 text-sm font-medium text-gray-800 bg-gray-100 rounded-full dark:bg-gray-700 dark:text-gray-300">
-                      Soon
-                    </span>
-                  </a>
-                </li>
+                {/* Management Section - Only if user has management permissions */}
+                {(hasPermission('canManageUsers') || hasPermission('canViewAllStaff') || hasPermission('canViewReports') || hasPermission('canViewAllShifts')) && (
+                  <>
+                    <li className="pt-4 mt-4 space-y-2 font-medium border-t border-gray-200 dark:border-gray-700">
+                      <p className="px-3 text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                        Management
+                      </p>
+                    </li>
 
-                {/* Room Management */}
-                <li>
-                  <a
-                    href="#"
-                    className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group"
-                  >
-                    <Building className="shrink-0 w-5 h-5 text-gray-500 transition duration-75 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white" />
-                    <span className="flex-1 ms-3 whitespace-nowrap">Rooms</span>
-                    <span className="inline-flex items-center justify-center px-2 ms-3 text-sm font-medium text-gray-800 bg-gray-100 rounded-full dark:bg-gray-700 dark:text-gray-300">
-                      Soon
-                    </span>
-                  </a>
-                </li>
+                    {/* Shift Management - Admin and Manager */}
+                    {hasPermission('canViewAllShifts') && (
+                      <li>
+                        <Link
+                          to="/admin/shift-management"
+                          className={`flex items-center p-2 rounded-lg group ${
+                            isActive("/admin/shift-management")
+                              ? "bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-100"
+                              : "text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+                          }`}
+                        >
+                          <Calendar
+                            className={`shrink-0 w-5 h-5 transition duration-75 ${
+                              isActive("/admin/shift-management")
+                                ? "text-blue-900 dark:text-blue-100"
+                                : "text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white"
+                            }`}
+                          />
+                          <span className="flex-1 ms-3 whitespace-nowrap">Shift Management</span>
+                        </Link>
+                      </li>
+                    )}
+
+
+                    {/* Staff Management - Admin only */}
+                    {hasPermission('canManageStaff') && (
+                      <li>
+                        <Link
+                          to="/admin/staff-management"
+                          className={`flex items-center p-2 rounded-lg group ${
+                            isActive("/admin/staff-management")
+                              ? "bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-100"
+                              : "text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+                          }`}
+                        >
+                          <Users
+                            className={`shrink-0 w-5 h-5 transition duration-75 ${
+                              isActive("/admin/staff-management")
+                                ? "text-blue-900 dark:text-blue-100"
+                                : "text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white"
+                            }`}
+                          />
+                          <span className="flex-1 ms-3 whitespace-nowrap">Staff Management</span>
+                        </Link>
+                      </li>
+                    )}
+
+                    {/* Room Management - Admin and Manager */}
+                    {hasPermission('canManageRooms') && (
+                      <li>
+                        <Link
+                          to="/admin/room-management"
+                          className={`flex items-center p-2 rounded-lg group ${
+                            isActive("/admin/room-management")
+                              ? "bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-100"
+                              : "text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+                          }`}
+                        >
+                          <Building
+                            className={`shrink-0 w-5 h-5 transition duration-75 ${
+                              isActive("/admin/room-management")
+                                ? "text-blue-900 dark:text-blue-100"
+                                : "text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white"
+                            }`}
+                          />
+                          <span className="flex-1 ms-3 whitespace-nowrap">Room Management</span>
+                        </Link>
+                      </li>
+                    )}
+                  </>
+                )}
 
                 {/* Logout */}
                 <li className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">

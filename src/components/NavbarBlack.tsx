@@ -1,6 +1,9 @@
 import { useContext, useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
+import { useStaffStore } from "../store/staffStore";
+import { ROLE_LABELS } from "../types/user";
 import Button from "./ui/Button";
 import FilterInput from "./ui/FilterInput";
 import FilterSelect from "./ui/FilterSelect";
@@ -17,6 +20,8 @@ import {
   ChevronUp,
   LogOut,
   Settings,
+  Crown,
+  Shield,
 } from "lucide-react";
 
 interface NavbarProps {
@@ -48,13 +53,46 @@ const Navbar = ({
   const authContext = useContext(AuthContext);
   const user = authContext?.user;
   const signOut = authContext?.signOut;
+  const { userProfile } = useAuth();
+  const { updateAvailability, getStaffByUid, fetchStaff } = useStaffStore();
   const location = useLocation();
   const [showShiftsDropdown, setShowShiftsDropdown] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showMobileNavDropdown, setShowMobileNavDropdown] = useState(false);
+  const [showAvailabilityDropdown, setShowAvailabilityDropdown] = useState(false);
+  const [currentAvailability, setCurrentAvailability] = useState<'Available' | 'On Break' | 'Busy' | 'Off Duty'>('Available');
   const dropdownRef = useRef<HTMLLIElement>(null);
   const userDropdownRef = useRef<HTMLDivElement>(null);
   const mobileNavDropdownRef = useRef<HTMLDivElement>(null);
+  const availabilityDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Load current availability from Firestore
+  useEffect(() => {
+    const loadAvailability = async () => {
+      if (user && userProfile?.role === 'staff') {
+        try {
+          // Ensure staff data is loaded
+          await fetchStaff();
+          
+          const staffMember = getStaffByUid(user.uid);
+          if (staffMember && staffMember.availability) {
+            setCurrentAvailability(staffMember.availability);
+            console.log('Loaded availability from Firestore:', staffMember.availability);
+          } else {
+            console.log('Staff member not found or no availability set, using default');
+          }
+        } catch (error) {
+          console.error('Failed to fetch staff data for availability:', error);
+          // Continue with default availability if fetch fails
+        }
+      }
+    };
+    
+    // Only load if we have both user and userProfile (authentication is complete)
+    if (user && userProfile) {
+      loadAvailability();
+    }
+  }, [user, userProfile, getStaffByUid, fetchStaff]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -67,6 +105,9 @@ const Navbar = ({
       }
       if (mobileNavDropdownRef.current && !mobileNavDropdownRef.current.contains(event.target as Node)) {
         setShowMobileNavDropdown(false);
+      }
+      if (availabilityDropdownRef.current && !availabilityDropdownRef.current.contains(event.target as Node)) {
+        setShowAvailabilityDropdown(false);
       }
     };
 
@@ -90,6 +131,18 @@ const Navbar = ({
     if (hour < 12) return "Good morning";
     if (hour < 18) return "Good afternoon";
     return "Good evening";
+  };
+
+  const getRoleIcon = () => {
+    if (!userProfile) return <User className="w-3 h-3" />;
+    switch (userProfile.role) {
+      case 'admin':
+        return <Crown className="w-3 h-3 text-red-400" />;
+      case 'manager':
+        return <Shield className="w-3 h-3 text-blue-400" />;
+      case 'staff':
+        return <User className="w-3 h-3 text-gray-400" />;
+    }
   };
 
   const getPageInfo = () => {
@@ -171,7 +224,7 @@ const Navbar = ({
               <ChevronDown className={`w-3 h-3 text-gray-400 transition-transform ${showMobileNavDropdown ? 'rotate-180' : ''}`} />
             </button>
 
-            {showMobileNavDropdown && (
+            {showMobileNavDropdown && userProfile?.role !== 'staff' && (
               <div className="absolute top-full left-0 mt-2 bg-[#1C2333] rounded-lg shadow-lg py-2 min-w-[200px] z-50 border border-gray-700">
                 <Link
                   to="/"
@@ -237,6 +290,7 @@ const Navbar = ({
                     Room Management
                   </div>
                 </Link>
+                
               </div>
             )}
           </div>
@@ -261,77 +315,81 @@ const Navbar = ({
           </div>
 
           {/* Nav Links - Hidden on mobile, shown on larger screens */}
-          <ul className="hidden lg:flex items-center ml-6 space-x-4 text-gray-400">
-            <li
-              className={`px-3 py-1 rounded-lg ${
-                location.pathname === "/"
-                  ? "text-white bg-[#1C2333]"
-                  : "hover:text-white cursor-pointer"
-              }`}
-            >
-              <Link to={"/"}>Home</Link>
-            </li>
-            
-            {/* Shifts Dropdown */}
-            <li className="relative" ref={dropdownRef}>
-              <button
-                onClick={() => setShowShiftsDropdown(!showShiftsDropdown)}
-                className={`px-3 py-1 rounded-lg flex items-center gap-1 ${
-                  location.pathname === "/admin/shift-management" || location.pathname === "/shift-form"
+          {/* Only show navigation links for admin and manager users */}
+          {userProfile?.role !== 'staff' && (
+            <ul className="hidden lg:flex items-center ml-6 space-x-4 text-gray-400">
+              <li
+                className={`px-3 py-1 rounded-lg ${
+                  location.pathname === "/"
                     ? "text-white bg-[#1C2333]"
                     : "hover:text-white cursor-pointer"
                 }`}
               >
-                Shifts
-                {showShiftsDropdown ? (
-                  <ChevronUp className="w-3 h-3" />
-                ) : (
-                  <ChevronDown className="w-3 h-3" />
-                )}
-              </button>
+                <Link to={"/"}>Home</Link>
+              </li>
               
-              {showShiftsDropdown && (
-                <div className="absolute top-full left-0 mt-1 bg-[#1C2333] rounded-lg shadow-lg py-2 min-w-[160px] z-50">
-                  <Link
-                    to="/admin/shift-management"
-                    className="block px-4 py-2 text-gray-300 hover:text-white hover:bg-[#2A3441] transition-colors"
-                    onClick={() => setShowShiftsDropdown(false)}
-                  >
-                    Shift Management
-                  </Link>
-                  <Link
-                    to="/shift-form"
-                    className="block px-4 py-2 text-gray-300 hover:text-white hover:bg-[#2A3441] transition-colors"
-                    onClick={() => setShowShiftsDropdown(false)}
-                  >
-                    Create Shift
-                  </Link>
-                </div>
-              )}
-            </li>
-            
-            {/* Staffs */}
-            <li
-              className={`px-3 py-1 rounded-lg ${
-                location.pathname === "/admin/staff-management"
-                  ? "text-white bg-[#1C2333]"
-                  : "hover:text-white cursor-pointer"
-              }`}
-            >
-              <Link to={"/admin/staff-management"}>Staffs</Link>
-            </li>
-            
-            {/* Rooms */}
-            <li
-              className={`px-3 py-1 rounded-lg ${
-                location.pathname === "/admin/room-management"
-                  ? "text-white bg-[#1C2333]"
-                  : "hover:text-white cursor-pointer"
-              }`}
-            >
-              <Link to={"/admin/room-management"}>Rooms</Link>
-            </li>
-          </ul>
+              {/* Shifts Dropdown */}
+              <li className="relative" ref={dropdownRef}>
+                <button
+                  onClick={() => setShowShiftsDropdown(!showShiftsDropdown)}
+                  className={`px-3 py-1 rounded-lg flex items-center gap-1 ${
+                    location.pathname === "/admin/shift-management" || location.pathname === "/shift-form"
+                      ? "text-white bg-[#1C2333]"
+                      : "hover:text-white cursor-pointer"
+                  }`}
+                >
+                  Shifts
+                  {showShiftsDropdown ? (
+                    <ChevronUp className="w-3 h-3" />
+                  ) : (
+                    <ChevronDown className="w-3 h-3" />
+                  )}
+                </button>
+                
+                {showShiftsDropdown && (
+                  <div className="absolute top-full left-0 mt-1 bg-[#1C2333] rounded-lg shadow-lg py-2 min-w-[160px] z-50">
+                    <Link
+                      to="/admin/shift-management"
+                      className="block px-4 py-2 text-gray-300 hover:text-white hover:bg-[#2A3441] transition-colors"
+                      onClick={() => setShowShiftsDropdown(false)}
+                    >
+                      Shift Management
+                    </Link>
+                    <Link
+                      to="/shift-form"
+                      className="block px-4 py-2 text-gray-300 hover:text-white hover:bg-[#2A3441] transition-colors"
+                      onClick={() => setShowShiftsDropdown(false)}
+                    >
+                      Create Shift
+                    </Link>
+                  </div>
+                )}
+              </li>
+              
+              {/* Staffs */}
+              <li
+                className={`px-3 py-1 rounded-lg ${
+                  location.pathname === "/admin/staff-management"
+                    ? "text-white bg-[#1C2333]"
+                    : "hover:text-white cursor-pointer"
+                }`}
+              >
+                <Link to={"/admin/staff-management"}>Staffs</Link>
+              </li>
+              
+              {/* Rooms */}
+              <li
+                className={`px-3 py-1 rounded-lg ${
+                  location.pathname === "/admin/room-management"
+                    ? "text-white bg-[#1C2333]"
+                    : "hover:text-white cursor-pointer"
+                }`}
+              >
+                <Link to={"/admin/room-management"}>Rooms</Link>
+              </li>
+              
+            </ul>
+          )}
         </div>
 
         {/* Right - User Dropdown */}
@@ -341,9 +399,19 @@ const Navbar = ({
             className="flex items-center gap-2 sm:gap-3 hover:bg-[#1C2333] rounded-lg p-1.5 sm:p-2 transition-colors"
           >
             <div className="text-right hidden md:block">
-              <p className="text-xs sm:text-sm font-medium text-white">
-                {user?.displayName || 'User'}
-              </p>
+              <div className="flex items-center justify-end gap-2">
+                <p className="text-xs sm:text-sm font-medium text-white">
+                  {user?.displayName || 'User'}
+                </p>
+                {userProfile && (
+                  <div className="flex items-center gap-1">
+                    {getRoleIcon()}
+                    <span className="text-xs text-gray-300">
+                      {ROLE_LABELS[userProfile.role]}
+                    </span>
+                  </div>
+                )}
+              </div>
               <p className="text-xs text-gray-400">
                 {user?.email || 'user@example.com'}
               </p>
@@ -357,14 +425,22 @@ const Navbar = ({
           </button>
 
           {showUserDropdown && (
-            <div className="absolute top-full right-0 mt-2 bg-[#1C2333] rounded-lg shadow-lg py-2 min-w-[180px] sm:min-w-[200px] z-50 border border-gray-700">
+            <div className="absolute top-full right-0 mt-2 bg-[#1C2333] rounded-lg shadow-lg py-2 min-w-[200px] sm:min-w-[220px] z-50 border border-gray-700">
               <div className="px-4 py-3 border-b border-gray-700">
                 <p className="text-xs sm:text-sm font-medium text-white">
                   {user?.displayName || 'User'}
                 </p>
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-gray-400 mb-2">
                   {user?.email || 'user@example.com'}
                 </p>
+                {userProfile && (
+                  <div className="flex items-center gap-2">
+                    {getRoleIcon()}
+                    <span className="text-xs font-medium text-gray-300">
+                      {ROLE_LABELS[userProfile.role]}
+                    </span>
+                  </div>
+                )}
               </div>
               
               <button
@@ -396,12 +472,57 @@ const Navbar = ({
               {getGreeting()}, {user?.displayName || "User"}!
             </h1>
             <div className="flex items-center gap-2 sm:gap-4">
-              <Link to={"/shift-form"}>
-                <Button variant="primary" icon={<Plus className="w-4 h-4" />}>
-                  <span className="hidden sm:inline">New shift</span>
-                  <span className="sm:hidden">New</span>
-                </Button>
-              </Link>
+              {userProfile?.role === 'staff' ? (
+                // Staff users see availability dropdown
+                <div className="relative" ref={availabilityDropdownRef}>
+                  <button
+                    onClick={() => setShowAvailabilityDropdown(!showAvailabilityDropdown)}
+                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
+                  >
+                    <Clock className="w-4 h-4" />
+                    <span className="hidden sm:inline">{currentAvailability}</span>
+                    <span className="sm:hidden">Status</span>
+                    <ChevronDown className={`w-3 h-3 transition-transform ${showAvailabilityDropdown ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  {showAvailabilityDropdown && (
+                    <div className="absolute top-full right-0 mt-2 bg-[#1C2333] rounded-lg shadow-lg py-2 min-w-[160px] z-50 border border-gray-700">
+                      {['Available', 'On Break', 'Busy', 'Off Duty'].map((status) => (
+                        <button
+                          key={status}
+                          onClick={async () => {
+                            if (user && userProfile?.role === 'staff') {
+                              try {
+                                await updateAvailability(user.uid, status as typeof currentAvailability);
+                                setCurrentAvailability(status as typeof currentAvailability);
+                                setShowAvailabilityDropdown(false);
+                              } catch (error) {
+                                console.error('Failed to update availability:', error);
+                                // Still update the UI even if Firestore update fails
+                                setCurrentAvailability(status as typeof currentAvailability);
+                                setShowAvailabilityDropdown(false);
+                              }
+                            }
+                          }}
+                          className={`w-full text-left px-4 py-2 text-gray-300 hover:text-white hover:bg-[#2A3441] transition-colors ${
+                            currentAvailability === status ? 'bg-[#2A3441] text-white' : ''
+                          }`}
+                        >
+                          {status}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                // Admin and manager users see New shift button
+                <Link to={"/shift-form"}>
+                  <Button variant="primary" icon={<Plus className="w-4 h-4" />}>
+                    <span className="hidden sm:inline">New shift</span>
+                    <span className="sm:hidden">New</span>
+                  </Button>
+                </Link>
+              )}
             </div>
           </>
         ) : (
@@ -424,19 +545,21 @@ const Navbar = ({
               </div>
 
               {/* Page-specific Action Buttons - Moved to top on mobile */}
-              <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end">
-                {/* Home Page - Create Shift Button */}
-                {location.pathname === "/" && (
-                  <Link to={"/shift-form"}>
-                    <Button
-                      variant="primary"
-                      icon={<Plus className="w-4 h-4" />}
-                    >
-                      <span className="hidden sm:inline">New shift</span>
-                      <span className="sm:hidden">New</span>
-                    </Button>
-                  </Link>
-                )}
+              {/* Only show action buttons for admin and manager users */}
+              {userProfile?.role !== 'staff' && (
+                <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end">
+                  {/* Home Page - Create Shift Button */}
+                  {location.pathname === "/" && (
+                    <Link to={"/shift-form"}>
+                      <Button
+                        variant="primary"
+                        icon={<Plus className="w-4 h-4" />}
+                      >
+                        <span className="hidden sm:inline">New shift</span>
+                        <span className="sm:hidden">New</span>
+                      </Button>
+                    </Link>
+                  )}
 
                 {/* Room Management Page - Bulk Upload & Add Room */}
                 {location.pathname === "/admin/room-management" && (
@@ -500,7 +623,8 @@ const Navbar = ({
                     </Button>
                   </Link>
                 )}
-              </div>
+                </div>
+              )}
             </div>
             
             {/* Bottom row - Page-specific filters */}

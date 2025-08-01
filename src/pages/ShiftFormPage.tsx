@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { collection, addDoc, Timestamp } from "firebase/firestore";
 import { db } from "../lib/firebase";
+import { useAuth } from "../context/useAuth";
 import Select from "../components/Select";
 import TextArea from "../components/TextArea";
 import Input from "../components/Input";
@@ -23,6 +24,7 @@ import {
 } from "lucide-react";
 
 const ShiftFormPage = () => {
+  const { user } = useAuth();
   const { fetchShifts } = useShiftsStore();
   const { staff, fetchStaff, addStaff } = useStaffStore();
   const { rooms, fetchRooms } = useRoomStore();
@@ -45,13 +47,23 @@ const ShiftFormPage = () => {
 
   // Fetch staff and rooms data on component mount
   useEffect(() => {
-    if (staff.length === 0) {
-      fetchStaff();
-    }
-    if (rooms.length === 0) {
-      fetchRooms();
-    }
-  }, [staff.length, fetchStaff, rooms.length, fetchRooms]);
+    const fetchData = async () => {
+      if (user) {
+        try {
+          if (staff.length === 0) {
+            await fetchStaff();
+          }
+          if (rooms.length === 0) {
+            await fetchRooms();
+          }
+        } catch (error) {
+          console.error("Error fetching data in ShiftFormPage:", error);
+        }
+      }
+    };
+
+    fetchData();
+  }, [user, staff.length, fetchStaff, rooms.length, fetchRooms]);
 
   const handleInputChange = (field: keyof ShiftFormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -85,6 +97,7 @@ const ShiftFormPage = () => {
         // Add the new staff member to the database
         await addStaff({
           name: customStaff.trim(),
+          systemRole: "staff",
         });
 
         // Refresh staff list to get the new staff member with ID
@@ -263,7 +276,7 @@ const ShiftFormPage = () => {
                     ...staff.map((staffMember) => ({
                       value: staffMember.id,
                       label: `${staffMember.name}${
-                        staffMember.role ? ` (${staffMember.role})` : ""
+                        staffMember.jobRole ? ` (${staffMember.jobRole})` : ""
                       }`,
                     })),
                     { value: "custom", label: "+ Add New Staff Member" },
@@ -412,7 +425,11 @@ const ShiftFormPage = () => {
                   variant="primary"
                   disabled={loading}
                   loading={loading}
-                  icon={loading ? undefined : <Save className="w-3 h-3 sm:w-4 sm:h-4" />}
+                  icon={
+                    loading ? undefined : (
+                      <Save className="w-3 h-3 sm:w-4 sm:h-4" />
+                    )
+                  }
                   size="lg"
                   className="w-full sm:w-auto"
                 >
