@@ -10,6 +10,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
+import { AutoAssignmentService, type AutoAssignmentConfig, type AutoAssignmentResult } from "../services/autoAssignmentService";
 
 export interface Shift {
   id: string;
@@ -27,9 +28,12 @@ interface ShiftsState {
   shifts: Shift[];
   loading: boolean;
   error: string | null;
+  isAutoAssigning: boolean;
+  lastAutoAssignmentResult: AutoAssignmentResult | null;
   fetchShifts: () => Promise<void>;
   updateShift: (id: string, updatedShift: Partial<Shift>) => Promise<void>;
   deleteShift: (id: string) => Promise<void>;
+  autoAssignShifts: (config: AutoAssignmentConfig) => Promise<AutoAssignmentResult>;
   checkStaffHasShifts: (staffId: string) => boolean;
   getShiftsByStaffId: (staffId: string) => Shift[];
   checkRoomHasShifts: (roomId: string) => boolean;
@@ -43,6 +47,8 @@ export const useShiftsStore = create<ShiftsState>((set, get) => ({
   shifts: [],
   loading: false,
   error: null,
+  isAutoAssigning: false,
+  lastAutoAssignmentResult: null,
 
   fetchShifts: async () => {
     try {
@@ -110,6 +116,49 @@ export const useShiftsStore = create<ShiftsState>((set, get) => ({
       console.error("Error deleting shift:", err);
       set({ error: "Failed to delete shift. Please try again." });
       throw err;
+    }
+  },
+
+  autoAssignShifts: async (config: AutoAssignmentConfig) => {
+    try {
+      set({ isAutoAssigning: true, error: null, lastAutoAssignmentResult: null });
+
+      // Perform auto assignment
+      const result = await AutoAssignmentService.autoAssignShifts(config);
+      
+      // Store the result
+      set({ lastAutoAssignmentResult: result });
+
+      // If successful, refresh the shifts list to show new assignments
+      if (result.success && result.successCount > 0) {
+        await get().fetchShifts();
+      }
+
+      // Set error if there were any failures
+      if (!result.success || result.errors.length > 0) {
+        const errorMessage = result.errors.length > 0 
+          ? result.errors.join('; ') 
+          : 'Auto assignment failed';
+        set({ error: errorMessage });
+      }
+
+      return result;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Auto assignment failed';
+      set({ error: errorMessage });
+      
+      const failureResult: AutoAssignmentResult = {
+        success: false,
+        successCount: 0,
+        failureCount: 0,
+        assignments: [],
+        errors: [errorMessage],
+      };
+      
+      set({ lastAutoAssignmentResult: failureResult });
+      return failureResult;
+    } finally {
+      set({ isAutoAssigning: false });
     }
   },
 

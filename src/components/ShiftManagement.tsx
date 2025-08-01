@@ -34,8 +34,14 @@ const ShiftManagement = ({
   staffFilter: externalStaffFilter,
 }: ShiftManagementProps = {}) => {
   const { hasPermission } = useAuth();
-  const { shifts, error, fetchShifts, updateShift, deleteShift, clearError } =
-    useShiftsStore();
+  const { 
+    shifts, 
+    error, 
+    fetchShifts, 
+    updateShift, 
+    deleteShift, 
+    clearError 
+  } = useShiftsStore();
 
   const [filteredShifts, setFilteredShifts] = useState<Shift[]>([]);
 
@@ -67,7 +73,11 @@ const ShiftManagement = ({
     }
 
     if (shiftFilter) {
-      filtered = filtered.filter((shift) => shift.shift === shiftFilter);
+      filtered = filtered.filter((shift) => {
+        // Handle both old format (with timings) and new format (without timings)
+        const shiftName = getShiftName(shift.shift);
+        return shiftName === shiftFilter || shift.shift === shiftFilter;
+      });
     }
 
     if (staffFilter) {
@@ -103,6 +113,7 @@ const ShiftManagement = ({
     }
   };
 
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       weekday: "short",
@@ -122,11 +133,19 @@ const ShiftManagement = ({
     });
   };
 
+  const getShiftName = (shiftValue: string) => {
+    // Extract just the shift name without timing
+    // "Morning (6 AM - 2 PM)" -> "Morning"
+    // "Afternoon (2 PM - 10 PM)" -> "Afternoon"
+    // "Evening (10 PM - 6 AM)" -> "Evening"
+    return shiftValue.split(' (')[0] || shiftValue;
+  };
+
   // Calculate shift analytics
   const today = new Date().toISOString().split("T")[0];
   const todaysShifts = shifts.filter((shift) => shift.date === today);
   const morningShifts = shifts.filter(
-    (shift) => shift.shift === "Morning (6 AM - 2 PM)"
+    (shift) => shift.shift === "Morning"
   );
 
   // Get unique staff count
@@ -174,7 +193,7 @@ const ShiftManagement = ({
 
         <AnalyticsCard
           title="Morning Shifts"
-          subtitle="6 AM - 2 PM shifts"
+          subtitle="Morning shift assignments"
           value={morningShifts.length}
           icon={<TrendingUp className="w-5 h-5" />}
           change={{
@@ -186,6 +205,8 @@ const ShiftManagement = ({
           className="w-full"
         />
       </div>
+
+
 
       <div className="flex items-center justify-between mb-6">
         <div className="text-sm text-gray-600 dark:text-gray-400">
@@ -246,7 +267,7 @@ const ShiftManagement = ({
             {
               key: "shift",
               header: "Shift",
-              render: (value) => <Tag>{value}</Tag>,
+              render: (value) => <Tag>{getShiftName(value)}</Tag>,
             },
             {
               key: "staffName",
@@ -337,6 +358,7 @@ const ShiftManagement = ({
           </div>
         </div>
       )}
+
     </div>
   );
 };

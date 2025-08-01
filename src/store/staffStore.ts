@@ -9,6 +9,7 @@ import {
   deleteField,
   Timestamp,
 } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 import { db } from "../lib/firebase";
 
 export interface Staff {
@@ -30,7 +31,7 @@ interface StaffStore {
   error: string | null;
   fetchStaff: () => Promise<void>;
   addStaff: (
-    staffData: Omit<Staff, "id" | "createdAt" | "updatedAt">
+    staffData: Partial<Omit<Staff, "id" | "createdAt" | "updatedAt">> & { name: string }
   ) => Promise<void>;
   updateStaff: (
     id: string,
@@ -75,38 +76,77 @@ export const useStaffStore = create<StaffStore>((set) => ({
   addStaff: async (staffData) => {
     set({ error: null });
     try {
-      console.log("Adding staff member:", staffData);
+      console.log("=== STAFF CREATION DEBUG ===");
+      console.log("1. Input staff data:", JSON.stringify(staffData, null, 2));
+      
+      // Check authentication status
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+      console.log("2. Current user:", currentUser ? {
+        uid: currentUser.uid,
+        email: currentUser.email,
+        emailVerified: currentUser.emailVerified
+      } : "No user logged in");
+
       const now = Timestamp.now();
       const staffCollection = collection(db, "staff");
+      console.log("3. Collection reference created:", staffCollection.path);
 
-      // Filter out undefined values to avoid Firestore errors
-      const cleanStaffData = Object.fromEntries(
-        Object.entries(staffData).filter(([_, value]) => value !== undefined)
-      );
-
-      console.log("Clean staff data:", cleanStaffData);
-
-      const docRef = await addDoc(staffCollection, {
-        ...cleanStaffData,
+      // Prepare staff data with proper defaults and required fields
+      const preparedStaffData: any = {
+        name: staffData.name,
+        systemRole: staffData.systemRole || 'staff',
+        availability: staffData.availability || 'Available',
         createdAt: now,
         updatedAt: now,
-      });
+      };
 
-      console.log("Staff document created with ID:", docRef.id);
+      // Add optional fields only if they exist and are not empty
+      if (staffData.uid) {
+        preparedStaffData.uid = staffData.uid;
+      }
+      
+      if (staffData.email && staffData.email.trim()) {
+        preparedStaffData.email = staffData.email.trim();
+      }
+      
+      if (staffData.jobRole && staffData.jobRole.trim()) {
+        preparedStaffData.jobRole = staffData.jobRole.trim();
+      }
+      
+      if (staffData.phone && staffData.phone.trim()) {
+        preparedStaffData.phone = staffData.phone.trim();
+      }
+
+      console.log("4. Prepared staff data:", JSON.stringify(preparedStaffData, null, 2));
+      console.log("5. Attempting to create document in Firestore...");
+
+      const docRef = await addDoc(staffCollection, preparedStaffData);
+
+      console.log("6. SUCCESS: Staff document created with ID:", docRef.id);
 
       const newStaff: Staff = {
         id: docRef.id,
-        ...staffData,
-        createdAt: now,
-        updatedAt: now,
+        ...preparedStaffData,
       };
 
       set((state) => ({
         staff: [...state.staff, newStaff],
       }));
-    } catch (error) {
+      
+      console.log("7. SUCCESS: Staff added to local state");
+      console.log("=== END STAFF CREATION DEBUG ===");
+    } catch (error: any) {
+      console.log("=== STAFF CREATION ERROR ===");
+      console.error("Error details:", {
+        message: error?.message,
+        code: error?.code,
+        stack: error?.stack,
+        fullError: error
+      });
+      console.log("=== END STAFF CREATION ERROR ===");
+      
       set({ error: "Failed to add staff member" });
-      console.error("Error adding staff:", error);
       throw error;
     }
   },

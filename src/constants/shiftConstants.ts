@@ -10,6 +10,12 @@ export type ShiftFormData = {
 
 export const SHIFT_TYPES = ["Morning", "Afternoon", "Evening"];
 
+export const SHIFT_TIME_LABELS: Record<string, string> = {
+  "Morning": "Morning",
+  "Afternoon": "Afternoon", 
+  "Evening": "Evening"
+};
+
 export const STAFF_LIST = [
   "John Doe",
   "Jane Smith",

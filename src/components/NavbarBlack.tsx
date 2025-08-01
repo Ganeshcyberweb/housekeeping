@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import { useAuth } from "../context/useAuth";
 import { useStaffStore } from "../store/staffStore";
+import { useShiftsStore } from "../store/shiftsStore";
 import { ROLE_LABELS } from "../types/user";
 import Button from "./ui/Button";
 import FilterInput from "./ui/FilterInput";
@@ -22,6 +23,7 @@ import {
   Settings,
   Crown,
   Shield,
+  Zap,
 } from "lucide-react";
 
 interface NavbarProps {
@@ -53,14 +55,30 @@ const Navbar = ({
   const authContext = useContext(AuthContext);
   const user = authContext?.user;
   const signOut = authContext?.signOut;
-  const { userProfile } = useAuth();
+  const { userProfile, hasPermission } = useAuth();
   const { updateAvailability, getStaffByUid, fetchStaff } = useStaffStore();
+  const { isAutoAssigning, autoAssignShifts } = useShiftsStore();
   const location = useLocation();
   const [showShiftsDropdown, setShowShiftsDropdown] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showMobileNavDropdown, setShowMobileNavDropdown] = useState(false);
-  const [showAvailabilityDropdown, setShowAvailabilityDropdown] = useState(false);
-  const [currentAvailability, setCurrentAvailability] = useState<'Available' | 'On Break' | 'Busy' | 'Off Duty'>('Available');
+  const [showAvailabilityDropdown, setShowAvailabilityDropdown] =
+    useState(false);
+  const [showAutoAssignConfirm, setShowAutoAssignConfirm] = useState(false);
+  const [autoAssignConfig, setAutoAssignConfig] = useState({
+    date: new Date().toISOString().split('T')[0], // Today's date
+    shift: (() => {
+      // Determine default shift based on current time
+      const currentHour = new Date().getHours();
+      if (currentHour >= 14 && currentHour < 22) return 'Afternoon';
+      else if (currentHour >= 22 || currentHour < 6) return 'Evening';
+      return 'Morning';
+    })(),
+    maxRooms: 5
+  });
+  const [currentAvailability, setCurrentAvailability] = useState<
+    "Available" | "On Break" | "Busy" | "Off Duty"
+  >("Available");
   const dropdownRef = useRef<HTMLLIElement>(null);
   const userDropdownRef = useRef<HTMLDivElement>(null);
   const mobileNavDropdownRef = useRef<HTMLDivElement>(null);
@@ -69,25 +87,30 @@ const Navbar = ({
   // Load current availability from Firestore
   useEffect(() => {
     const loadAvailability = async () => {
-      if (user && userProfile?.role === 'staff') {
+      if (user && userProfile?.role === "staff") {
         try {
           // Ensure staff data is loaded
           await fetchStaff();
-          
+
           const staffMember = getStaffByUid(user.uid);
           if (staffMember && staffMember.availability) {
             setCurrentAvailability(staffMember.availability);
-            console.log('Loaded availability from Firestore:', staffMember.availability);
+            console.log(
+              "Loaded availability from Firestore:",
+              staffMember.availability
+            );
           } else {
-            console.log('Staff member not found or no availability set, using default');
+            console.log(
+              "Staff member not found or no availability set, using default"
+            );
           }
         } catch (error) {
-          console.error('Failed to fetch staff data for availability:', error);
+          console.error("Failed to fetch staff data for availability:", error);
           // Continue with default availability if fetch fails
         }
       }
     };
-    
+
     // Only load if we have both user and userProfile (authentication is complete)
     if (user && userProfile) {
       loadAvailability();
@@ -97,23 +120,35 @@ const Navbar = ({
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setShowShiftsDropdown(false);
       }
-      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target as Node)) {
+      if (
+        userDropdownRef.current &&
+        !userDropdownRef.current.contains(event.target as Node)
+      ) {
         setShowUserDropdown(false);
       }
-      if (mobileNavDropdownRef.current && !mobileNavDropdownRef.current.contains(event.target as Node)) {
+      if (
+        mobileNavDropdownRef.current &&
+        !mobileNavDropdownRef.current.contains(event.target as Node)
+      ) {
         setShowMobileNavDropdown(false);
       }
-      if (availabilityDropdownRef.current && !availabilityDropdownRef.current.contains(event.target as Node)) {
+      if (
+        availabilityDropdownRef.current &&
+        !availabilityDropdownRef.current.contains(event.target as Node)
+      ) {
         setShowAvailabilityDropdown(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
 
@@ -122,7 +157,32 @@ const Navbar = ({
       await signOut?.();
       setShowUserDropdown(false);
     } catch (error) {
-      console.error('Error signing out:', error);
+      console.error("Error signing out:", error);
+    }
+  };
+
+  const confirmAutoAssign = () => {
+    setShowAutoAssignConfirm(true);
+  };
+
+  const handleAutoAssign = async () => {
+    setShowAutoAssignConfirm(false);
+
+    try {
+      const result = await autoAssignShifts({
+        date: autoAssignConfig.date,
+        shiftType: autoAssignConfig.shift,
+        maxAssignmentsPerStaff: autoAssignConfig.maxRooms,
+      });
+
+      if (result.success) {
+        // Success feedback will be handled by the store and UI
+        console.log(
+          `Auto assignment completed: ${result.successCount} shifts created`
+        );
+      }
+    } catch (error) {
+      console.error("Auto assignment failed:", error);
     }
   };
 
@@ -136,11 +196,11 @@ const Navbar = ({
   const getRoleIcon = () => {
     if (!userProfile) return <User className="w-3 h-3" />;
     switch (userProfile.role) {
-      case 'admin':
+      case "admin":
         return <Crown className="w-3 h-3 text-red-400" />;
-      case 'manager':
+      case "manager":
         return <Shield className="w-3 h-3 text-blue-400" />;
-      case 'staff':
+      case "staff":
         return <User className="w-3 h-3 text-gray-400" />;
     }
   };
@@ -220,11 +280,17 @@ const Navbar = ({
                   <path d="M12 2l9 4.9v9.8L12 22l-9-5.3V6.9L12 2z" />
                 </svg>
               </div>
-              <span className="font-semibold text-sm sm:text-lg">Shift Planner</span>
-              <ChevronDown className={`w-3 h-3 text-gray-400 transition-transform ${showMobileNavDropdown ? 'rotate-180' : ''}`} />
+              <span className="font-semibold text-sm sm:text-lg">
+                Shift Planner
+              </span>
+              <ChevronDown
+                className={`w-3 h-3 text-gray-400 transition-transform ${
+                  showMobileNavDropdown ? "rotate-180" : ""
+                }`}
+              />
             </button>
 
-            {showMobileNavDropdown && userProfile?.role !== 'staff' && (
+            {showMobileNavDropdown && userProfile?.role !== "staff" && (
               <div className="absolute top-full left-0 mt-2 bg-[#1C2333] rounded-lg shadow-lg py-2 min-w-[200px] z-50 border border-gray-700">
                 <Link
                   to="/"
@@ -238,11 +304,13 @@ const Navbar = ({
                     Home
                   </div>
                 </Link>
-                
+
                 <Link
                   to="/admin/shift-management"
                   className={`block px-4 py-2 text-gray-300 hover:text-white hover:bg-[#2A3441] transition-colors ${
-                    location.pathname === "/admin/shift-management" ? "text-white bg-[#2A3441]" : ""
+                    location.pathname === "/admin/shift-management"
+                      ? "text-white bg-[#2A3441]"
+                      : ""
                   }`}
                   onClick={() => setShowMobileNavDropdown(false)}
                 >
@@ -251,11 +319,13 @@ const Navbar = ({
                     Shift Management
                   </div>
                 </Link>
-                
+
                 <Link
                   to="/shift-form"
                   className={`block px-4 py-2 text-gray-300 hover:text-white hover:bg-[#2A3441] transition-colors ${
-                    location.pathname === "/shift-form" ? "text-white bg-[#2A3441]" : ""
+                    location.pathname === "/shift-form"
+                      ? "text-white bg-[#2A3441]"
+                      : ""
                   }`}
                   onClick={() => setShowMobileNavDropdown(false)}
                 >
@@ -264,11 +334,13 @@ const Navbar = ({
                     Create Shift
                   </div>
                 </Link>
-                
+
                 <Link
                   to="/admin/staff-management"
                   className={`block px-4 py-2 text-gray-300 hover:text-white hover:bg-[#2A3441] transition-colors ${
-                    location.pathname === "/admin/staff-management" ? "text-white bg-[#2A3441]" : ""
+                    location.pathname === "/admin/staff-management"
+                      ? "text-white bg-[#2A3441]"
+                      : ""
                   }`}
                   onClick={() => setShowMobileNavDropdown(false)}
                 >
@@ -277,11 +349,13 @@ const Navbar = ({
                     Staff Management
                   </div>
                 </Link>
-                
+
                 <Link
                   to="/admin/room-management"
                   className={`block px-4 py-2 text-gray-300 hover:text-white hover:bg-[#2A3441] transition-colors ${
-                    location.pathname === "/admin/room-management" ? "text-white bg-[#2A3441]" : ""
+                    location.pathname === "/admin/room-management"
+                      ? "text-white bg-[#2A3441]"
+                      : ""
                   }`}
                   onClick={() => setShowMobileNavDropdown(false)}
                 >
@@ -290,7 +364,6 @@ const Navbar = ({
                     Room Management
                   </div>
                 </Link>
-                
               </div>
             )}
           </div>
@@ -311,12 +384,14 @@ const Navbar = ({
                 <path d="M12 2l9 4.9v9.8L12 22l-9-5.3V6.9L12 2z" />
               </svg>
             </div>
-            <span className="font-semibold text-sm sm:text-lg">Shift Planner</span>
+            <span className="font-semibold text-sm sm:text-lg">
+              Shift Planner
+            </span>
           </div>
 
           {/* Nav Links - Hidden on mobile, shown on larger screens */}
           {/* Only show navigation links for admin and manager users */}
-          {userProfile?.role !== 'staff' && (
+          {userProfile?.role !== "staff" && (
             <ul className="hidden lg:flex items-center ml-6 space-x-4 text-gray-400">
               <li
                 className={`px-3 py-1 rounded-lg ${
@@ -327,13 +402,14 @@ const Navbar = ({
               >
                 <Link to={"/"}>Home</Link>
               </li>
-              
+
               {/* Shifts Dropdown */}
               <li className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setShowShiftsDropdown(!showShiftsDropdown)}
                   className={`px-3 py-1 rounded-lg flex items-center gap-1 ${
-                    location.pathname === "/admin/shift-management" || location.pathname === "/shift-form"
+                    location.pathname === "/admin/shift-management" ||
+                    location.pathname === "/shift-form"
                       ? "text-white bg-[#1C2333]"
                       : "hover:text-white cursor-pointer"
                   }`}
@@ -345,7 +421,7 @@ const Navbar = ({
                     <ChevronDown className="w-3 h-3" />
                   )}
                 </button>
-                
+
                 {showShiftsDropdown && (
                   <div className="absolute top-full left-0 mt-1 bg-[#1C2333] rounded-lg shadow-lg py-2 min-w-[160px] z-50">
                     <Link
@@ -365,7 +441,7 @@ const Navbar = ({
                   </div>
                 )}
               </li>
-              
+
               {/* Staffs */}
               <li
                 className={`px-3 py-1 rounded-lg ${
@@ -376,7 +452,7 @@ const Navbar = ({
               >
                 <Link to={"/admin/staff-management"}>Staffs</Link>
               </li>
-              
+
               {/* Rooms */}
               <li
                 className={`px-3 py-1 rounded-lg ${
@@ -387,7 +463,6 @@ const Navbar = ({
               >
                 <Link to={"/admin/room-management"}>Rooms</Link>
               </li>
-              
             </ul>
           )}
         </div>
@@ -401,7 +476,7 @@ const Navbar = ({
             <div className="text-right hidden md:block">
               <div className="flex items-center justify-end gap-2">
                 <p className="text-xs sm:text-sm font-medium text-white">
-                  {user?.displayName || 'User'}
+                  {user?.displayName || "User"}
                 </p>
                 {userProfile && (
                   <div className="flex items-center gap-1">
@@ -413,7 +488,7 @@ const Navbar = ({
                 )}
               </div>
               <p className="text-xs text-gray-400">
-                {user?.email || 'user@example.com'}
+                {user?.email || "user@example.com"}
               </p>
             </div>
             <img
@@ -421,17 +496,21 @@ const Navbar = ({
               alt="user"
               className="w-7 h-7 sm:w-9 sm:h-9 rounded-full border border-gray-500"
             />
-            <ChevronDown className={`w-3 h-3 sm:w-4 sm:h-4 text-gray-400 transition-transform ${showUserDropdown ? 'rotate-180' : ''}`} />
+            <ChevronDown
+              className={`w-3 h-3 sm:w-4 sm:h-4 text-gray-400 transition-transform ${
+                showUserDropdown ? "rotate-180" : ""
+              }`}
+            />
           </button>
 
           {showUserDropdown && (
             <div className="absolute top-full right-0 mt-2 bg-[#1C2333] rounded-lg shadow-lg py-2 min-w-[200px] sm:min-w-[220px] z-50 border border-gray-700">
               <div className="px-4 py-3 border-b border-gray-700">
                 <p className="text-xs sm:text-sm font-medium text-white">
-                  {user?.displayName || 'User'}
+                  {user?.displayName || "User"}
                 </p>
                 <p className="text-xs text-gray-400 mb-2">
-                  {user?.email || 'user@example.com'}
+                  {user?.email || "user@example.com"}
                 </p>
                 {userProfile && (
                   <div className="flex items-center gap-2">
@@ -442,7 +521,7 @@ const Navbar = ({
                   </div>
                 )}
               </div>
-              
+
               <button
                 onClick={() => setShowUserDropdown(false)}
                 className="w-full text-left px-4 py-2 text-gray-300 hover:text-white hover:bg-[#2A3441] transition-colors flex items-center gap-2"
@@ -450,7 +529,7 @@ const Navbar = ({
                 <Settings className="w-4 h-4" />
                 Settings
               </button>
-              
+
               <button
                 onClick={handleLogout}
                 className="w-full text-left px-4 py-2 text-gray-300 hover:text-white hover:bg-[#2A3441] transition-colors flex items-center gap-2"
@@ -472,45 +551,67 @@ const Navbar = ({
               {getGreeting()}, {user?.displayName || "User"}!
             </h1>
             <div className="flex items-center gap-2 sm:gap-4">
-              {userProfile?.role === 'staff' ? (
+              {userProfile?.role === "staff" ? (
                 // Staff users see availability dropdown
                 <div className="relative" ref={availabilityDropdownRef}>
                   <button
-                    onClick={() => setShowAvailabilityDropdown(!showAvailabilityDropdown)}
+                    onClick={() =>
+                      setShowAvailabilityDropdown(!showAvailabilityDropdown)
+                    }
                     className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
                   >
                     <Clock className="w-4 h-4" />
-                    <span className="hidden sm:inline">{currentAvailability}</span>
+                    <span className="hidden sm:inline">
+                      {currentAvailability}
+                    </span>
                     <span className="sm:hidden">Status</span>
-                    <ChevronDown className={`w-3 h-3 transition-transform ${showAvailabilityDropdown ? 'rotate-180' : ''}`} />
+                    <ChevronDown
+                      className={`w-3 h-3 transition-transform ${
+                        showAvailabilityDropdown ? "rotate-180" : ""
+                      }`}
+                    />
                   </button>
-                  
+
                   {showAvailabilityDropdown && (
                     <div className="absolute top-full right-0 mt-2 bg-[#1C2333] rounded-lg shadow-lg py-2 min-w-[160px] z-50 border border-gray-700">
-                      {['Available', 'On Break', 'Busy', 'Off Duty'].map((status) => (
-                        <button
-                          key={status}
-                          onClick={async () => {
-                            if (user && userProfile?.role === 'staff') {
-                              try {
-                                await updateAvailability(user.uid, status as typeof currentAvailability);
-                                setCurrentAvailability(status as typeof currentAvailability);
-                                setShowAvailabilityDropdown(false);
-                              } catch (error) {
-                                console.error('Failed to update availability:', error);
-                                // Still update the UI even if Firestore update fails
-                                setCurrentAvailability(status as typeof currentAvailability);
-                                setShowAvailabilityDropdown(false);
+                      {["Available", "On Break", "Busy", "Off Duty"].map(
+                        (status) => (
+                          <button
+                            key={status}
+                            onClick={async () => {
+                              if (user && userProfile?.role === "staff") {
+                                try {
+                                  await updateAvailability(
+                                    user.uid,
+                                    status as typeof currentAvailability
+                                  );
+                                  setCurrentAvailability(
+                                    status as typeof currentAvailability
+                                  );
+                                  setShowAvailabilityDropdown(false);
+                                } catch (error) {
+                                  console.error(
+                                    "Failed to update availability:",
+                                    error
+                                  );
+                                  // Still update the UI even if Firestore update fails
+                                  setCurrentAvailability(
+                                    status as typeof currentAvailability
+                                  );
+                                  setShowAvailabilityDropdown(false);
+                                }
                               }
-                            }
-                          }}
-                          className={`w-full text-left px-4 py-2 text-gray-300 hover:text-white hover:bg-[#2A3441] transition-colors ${
-                            currentAvailability === status ? 'bg-[#2A3441] text-white' : ''
-                          }`}
-                        >
-                          {status}
-                        </button>
-                      ))}
+                            }}
+                            className={`w-full text-left px-4 py-2 text-gray-300 hover:text-white hover:bg-[#2A3441] transition-colors ${
+                              currentAvailability === status
+                                ? "bg-[#2A3441] text-white"
+                                : ""
+                            }`}
+                          >
+                            {status}
+                          </button>
+                        )
+                      )}
                     </div>
                   )}
                 </div>
@@ -531,7 +632,9 @@ const Navbar = ({
             {/* Top row - Page title and action buttons */}
             <div className="flex flex-col sm:flex-row justify-between items-start mb-4 gap-4 sm:gap-0">
               <div className="flex-1">
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold">{pageInfo.title}</h1>
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold">
+                  {pageInfo.title}
+                </h1>
                 {pageInfo.showFilters && (
                   <p className="text-gray-400 mt-1 text-sm sm:text-base">
                     {pageInfo.filterType === "shift" &&
@@ -546,7 +649,7 @@ const Navbar = ({
 
               {/* Page-specific Action Buttons - Moved to top on mobile */}
               {/* Only show action buttons for admin and manager users */}
-              {userProfile?.role !== 'staff' && (
+              {userProfile?.role !== "staff" && (
                 <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end">
                   {/* Home Page - Create Shift Button */}
                   {location.pathname === "/" && (
@@ -561,72 +664,88 @@ const Navbar = ({
                     </Link>
                   )}
 
-                {/* Room Management Page - Bulk Upload & Add Room */}
-                {location.pathname === "/admin/room-management" && (
-                  <>
+                  {/* Room Management Page - Bulk Upload & Add Room */}
+                  {location.pathname === "/admin/room-management" && (
+                    <>
+                      <Button
+                        onClick={onBulkUpload}
+                        variant="secondary"
+                        icon={<Upload className="w-4 h-4" />}
+                      >
+                        <span className="hidden sm:inline">Bulk Upload</span>
+                        <span className="sm:hidden">Upload</span>
+                      </Button>
+                      <Button
+                        onClick={onAddRoom}
+                        variant="primary"
+                        icon={<Plus className="w-4 h-4" />}
+                      >
+                        <span className="hidden sm:inline">Add Room</span>
+                        <span className="sm:hidden">Add</span>
+                      </Button>
+                    </>
+                  )}
+
+                  {/* Staff Management Page - Add Staff Member */}
+                  {location.pathname === "/admin/staff-management" && (
                     <Button
-                      onClick={onBulkUpload}
-                      variant="secondary"
-                      icon={<Upload className="w-4 h-4" />}
-                    >
-                      <span className="hidden sm:inline">Bulk Upload</span>
-                      <span className="sm:hidden">Upload</span>
-                    </Button>
-                    <Button
-                      onClick={onAddRoom}
+                      onClick={onAddStaff}
                       variant="primary"
-                      icon={<Plus className="w-4 h-4" />}
+                      icon={<UserPlus className="w-4 h-4" />}
                     >
-                      <span className="hidden sm:inline">Add Room</span>
-                      <span className="sm:hidden">Add</span>
+                      <span className="hidden sm:inline">Add Staff Member</span>
+                      <span className="sm:hidden">Add Staff</span>
                     </Button>
-                  </>
-                )}
+                  )}
 
-                {/* Staff Management Page - Add Staff Member */}
-                {location.pathname === "/admin/staff-management" && (
-                  <Button
-                    onClick={onAddStaff}
-                    variant="primary"
-                    icon={<UserPlus className="w-4 h-4" />}
-                  >
-                    <span className="hidden sm:inline">Add Staff Member</span>
-                    <span className="sm:hidden">Add Staff</span>
-                  </Button>
-                )}
+                  {/* Shift Management Page - Auto Assign & Create New Shift */}
+                  {location.pathname === "/admin/shift-management" && (
+                    <>
+                      {hasPermission("canAssignShifts") && (
+                        <Button
+                          onClick={confirmAutoAssign}
+                          disabled={isAutoAssigning}
+                          loading={isAutoAssigning}
+                          variant="primary"
+                          icon={<Zap className="w-4 h-4" />}
+                        >
+                          <span className="hidden sm:inline">
+                            {isAutoAssigning ? "Assigning..." : "Auto Assign"}
+                          </span>
+                          <span className="sm:hidden">Auto</span>
+                        </Button>
+                      )}
+                      <Link to={"/shift-form"}>
+                        <Button
+                          variant="primary"
+                          icon={<Plus className="w-4 h-4" />}
+                        >
+                          <span className="hidden sm:inline">New Shift</span>
+                          <span className="sm:hidden">New</span>
+                        </Button>
+                      </Link>
+                    </>
+                  )}
 
-                {/* Shift Management Page - Create New Shift */}
-                {location.pathname === "/admin/shift-management" && (
-                  <Link to={"/shift-form"}>
-                    <Button
-                      variant="primary"
-                      icon={<Plus className="w-4 h-4" />}
-                    >
-                      <span className="hidden sm:inline">New Shift</span>
-                      <span className="sm:hidden">New</span>
-                    </Button>
-                  </Link>
-                )}
+                  {/* Create Shift Page - No additional buttons needed */}
+                  {location.pathname === "/shift-form" && null}
 
-                {/* Create Shift Page - No additional buttons needed */}
-                {location.pathname === "/shift-form" && null}
-
-                {/* Admin Dashboard - Overview Page */}
-                {location.pathname === "/admin" && (
-                  <Link to={"/shift-form"}>
-                    <Button
-                      variant="primary"
-                      icon={<Plus className="w-4 h-4" />}
-                    >
-                      <span className="hidden sm:inline">New shift</span>
-                      <span className="sm:hidden">New</span>
-                    </Button>
-                  </Link>
-                )}
+                  {/* Admin Dashboard - Overview Page */}
+                  {location.pathname === "/admin" && (
+                    <Link to={"/shift-form"}>
+                      <Button
+                        variant="primary"
+                        icon={<Plus className="w-4 h-4" />}
+                      >
+                        <span className="hidden sm:inline">New shift</span>
+                        <span className="sm:hidden">New</span>
+                      </Button>
+                    </Link>
+                  )}
                 </div>
               )}
             </div>
-            
+
             {/* Bottom row - Page-specific filters */}
             {pageInfo.showFilters && (
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 overflow-x-auto">
@@ -663,11 +782,9 @@ const Navbar = ({
                         }
                       >
                         <option value="">All shifts</option>
-                        <option value="Morning (6 AM - 2 PM)">Morning</option>
-                        <option value="Afternoon (2 PM - 10 PM)">
-                          Afternoon
-                        </option>
-                        <option value="Night (10 PM - 6 AM)">Night</option>
+                        <option value="Morning">Morning</option>
+                        <option value="Afternoon">Afternoon</option>
+                        <option value="Evening">Evening</option>
                       </FilterSelect>
                     </div>
 
@@ -735,6 +852,95 @@ const Navbar = ({
           </div>
         )}
       </div>
+
+      {/* Auto Assignment Configuration Modal */}
+      {showAutoAssignConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg max-w-md w-full">
+            <div className="p-6">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                <Zap className="w-5 h-5 text-purple-600" />
+                Configure Auto Assignment
+              </h2>
+
+              <div className="mb-6 space-y-4">
+                <p className="text-gray-600 dark:text-gray-400 mb-4">
+                  Configure the assignment settings and automatically assign available staff to rooms.
+                </p>
+
+                {/* Date Input */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-900 dark:text-white mb-1">
+                    Date *
+                  </label>
+                  <input
+                    type="date"
+                    value={autoAssignConfig.date}
+                    onChange={(e) => setAutoAssignConfig({...autoAssignConfig, date: e.target.value})}
+                    className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5"
+                    required
+                  />
+                </div>
+
+                {/* Shift Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-900 dark:text-white mb-1">
+                    Shift *
+                  </label>
+                  <select
+                    value={autoAssignConfig.shift}
+                    onChange={(e) => setAutoAssignConfig({...autoAssignConfig, shift: e.target.value})}
+                    className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5"
+                    required
+                  >
+                    <option value="Morning">Morning</option>
+                    <option value="Afternoon">Afternoon</option>
+                    <option value="Evening">Evening</option>
+                  </select>
+                </div>
+
+                {/* Max Rooms per Staff */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-900 dark:text-white mb-1">
+                    Max Rooms per Staff *
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="20"
+                    value={autoAssignConfig.maxRooms}
+                    onChange={(e) => setAutoAssignConfig({...autoAssignConfig, maxRooms: parseInt(e.target.value) || 1})}
+                    className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5"
+                    placeholder="5"
+                    required
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Maximum number of rooms to assign to each staff member
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <Button
+                  onClick={() => setShowAutoAssignConfirm(false)}
+                  variant="secondary"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleAutoAssign}
+                  variant="primary"
+                  icon={<Zap className="w-4 h-4" />}
+                  className="bg-purple-600 hover:bg-purple-700 focus:ring-purple-500"
+                  disabled={!autoAssignConfig.date || !autoAssignConfig.shift || autoAssignConfig.maxRooms < 1}
+                >
+                  Start Assignment
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

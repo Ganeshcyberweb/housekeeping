@@ -111,15 +111,20 @@ const StaffManagement = ({
     try {
       const staffData: any = {
         name: newStaff.name.trim(),
-        systemRole: newStaff.systemRole,
+        systemRole: newStaff.systemRole || 'staff', // Default to 'staff' if not specified
+        availability: 'Available', // Default availability
+        // uid is optional - only for Firebase Auth linked users
+        // email is optional - only for Firebase Auth linked users
+        // createdAt and updatedAt will be added by the store
       };
 
-      // Only add jobRole and phone if they have values
-      if (newStaff.jobRole.trim()) {
+      // Only add jobRole if it has a value
+      if (newStaff.jobRole && newStaff.jobRole.trim()) {
         staffData.jobRole = newStaff.jobRole.trim();
       }
 
-      if (newStaff.phone.trim()) {
+      // Only add phone if it has a value
+      if (newStaff.phone && newStaff.phone.trim()) {
         staffData.phone = newStaff.phone.trim();
       }
 
@@ -128,6 +133,7 @@ const StaffManagement = ({
       setShowAddStaffModal(false);
     } catch (err) {
       // Error is handled in the store
+      console.error('Error in handleAddStaff:', err);
     }
   };
 

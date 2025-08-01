@@ -7,14 +7,10 @@ service cloud.firestore {
       // All authenticated users can read staff data
       allow read: if request.auth != null;
       
-      // New users can create their own staff record with 'staff' role
-      // Users with existing admin/manager staff records can create new staff records
-      allow create: if request.auth != null && (
-        (request.resource.data.uid == request.auth.uid &&
-         request.resource.data.systemRole == 'staff') ||
-        // Allow creation if user has admin/manager role in existing staff record
-        resource == null // This is a new document creation
-      );
+      // Allow staff record creation in these cases:
+      // 1. New users creating their own staff record with 'staff' role
+      // 2. Any authenticated user can create staff records (managers/admins will be validated at app level)
+      allow create: if request.auth != null;
       
       // Users can update their own record (except systemRole)
       // Admin/manager permissions will be enforced at the application level
