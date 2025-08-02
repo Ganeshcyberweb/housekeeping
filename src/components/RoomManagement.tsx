@@ -230,6 +230,20 @@ const RoomManagement = ({
     const lines = csvText.trim().split("\n");
     const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
 
+    // Validate headers - must have exactly: room, type, status
+    const expectedHeaders = ["room", "type", "status"];
+    const hasValidHeaders = expectedHeaders.every((header) =>
+      headers.includes(header)
+    );
+
+    if (!hasValidHeaders) {
+      throw new Error(
+        `CSV must have exactly these column headers: ${expectedHeaders.join(
+          ", "
+        )}`
+      );
+    }
+
     return lines
       .slice(1)
       .map((line) => {
@@ -238,27 +252,22 @@ const RoomManagement = ({
 
         headers.forEach((header, index) => {
           const value = values[index] || "";
-          if (value) {
-            switch (header) {
-              case "number":
-              case "room number":
-              case "room":
-                room.number = value;
-                break;
-              case "type":
-              case "room type":
-                room.type = value;
-                break;
-              case "status":
-                room.status = value;
-                break;
-            }
+          switch (header) {
+            case "room":
+              room.number = value;
+              break;
+            case "type":
+              room.type = value;
+              break;
+            case "status":
+              room.status = value;
+              break;
           }
         });
 
         return room;
       })
-      .filter((room) => room.number); // Only include rooms with numbers
+      .filter((room) => room.number); // Only include rooms with room numbers
   };
 
   const handleBulkUpload = async () => {
@@ -267,33 +276,41 @@ const RoomManagement = ({
     try {
       const parsedRooms = parseCsvData(csvData);
       if (parsedRooms.length === 0) {
-        alert("No valid room data found in CSV");
+        alert(
+          "No valid room data found in CSV. Make sure your CSV has the correct format with 'room' column containing room numbers."
+        );
         return;
       }
 
       await addBulkRooms(parsedRooms);
+      alert(`Successfully uploaded ${parsedRooms.length} rooms!`);
       setCsvData("");
       setShowBulkUpload(false);
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
     } catch (err) {
-      // Error is handled in the store
+      console.error("Error uploading rooms:", err);
+      alert(
+        `Failed to upload rooms: ${err || "Please check your CSV format."}`
+      );
     }
   };
 
   const downloadSampleCSV = () => {
-    const sampleData = `Number,Type,Status
+    const sampleData = `room,type,status
 Room 101,Standard,Available
 Room 102,Deluxe,Occupied
-Room 201,Suite,Maintenance`;
+Room 201,Suite,Maintenance
+Room 301,Standard,Available
+Room 302,Deluxe,Available`;
 
     const blob = new Blob([sampleData], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.style.display = "none";
     a.href = url;
-    a.download = "room_sample.csv";
+    a.download = "rooms_template.csv";
     document.body.appendChild(a);
     a.click();
     window.URL.revokeObjectURL(url);
@@ -431,17 +448,9 @@ Room 201,Suite,Maintenance`;
             No rooms found
           </h3>
           <p className="text-gray-600 dark:text-gray-400 mb-6 text-sm">
-            Add your first room to get started.
+            Add your first room to get started. You can add rooms individually
+            or use bulk upload for multiple rooms.
           </p>
-          <div className="flex justify-center gap-3">
-            <Button
-              onClick={downloadSampleCSV}
-              variant="secondary"
-              icon={<Download className="w-4 h-4" />}
-            >
-              Sample CSV
-            </Button>
-          </div>
         </div>
       )}
 
@@ -765,44 +774,104 @@ Room 201,Suite,Maintenance`;
       {/* Bulk Upload Modal */}
       {showBulkUpload && (
         <div className="fixed inset-0 bg-black/10 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg max-w-lg w-full">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg max-w-2xl w-full">
             <div className="p-6">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
                 Bulk Upload Rooms
               </h2>
 
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-                  CSV Data Preview
-                </label>
-                <textarea
-                  value={csvData}
-                  onChange={(e) => setCsvData(e.target.value)}
-                  className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-                  rows={8}
-                  placeholder="Paste CSV data here or upload a file..."
-                />
-              </div>
-
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
-                <div className="flex items-start gap-2">
-                  <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-                  <div className="text-sm text-blue-800 dark:text-blue-200">
-                    <strong>CSV Format:</strong> Include headers like Number,
-                    Type, Status. Only "Number" is required. Click "Sample CSV"
-                    to download an example.
+              {/* CSV Format Example */}
+              <div className="mb-6">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-3">
+                  CSV Format Required
+                </h3>
+                <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                    Your CSV file must have exactly these column headers:
+                  </p>
+                  <div className="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded p-3 font-mono text-sm">
+                    <div className="text-green-600 dark:text-green-400 font-semibold mb-1">
+                      room,type,status
+                    </div>
+                    <div className="text-gray-700 dark:text-gray-300">
+                      Room 101,Standard,Available
+                      <br />
+                      Room 102,Deluxe,Occupied
+                      <br />
+                      Room 201,Suite,Maintenance
+                      <br />
+                      Room 301,Standard,Available
+                    </div>
+                  </div>
+                  <div className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>
+                        <strong>room:</strong> Room number/identifier (required)
+                      </li>
+                      <li>
+                        <strong>type:</strong> Room type like Standard, Deluxe,
+                        Suite (optional)
+                      </li>
+                      <li>
+                        <strong>status:</strong> Available, Occupied, or
+                        Maintenance (optional)
+                      </li>
+                    </ul>
                   </div>
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3">
-                <Button
-                  onClick={downloadSampleCSV}
-                  variant="secondary"
-                  icon={<Download className="w-4 h-4" />}
-                >
-                  Sample CSV
-                </Button>
+              {/* File Upload Section */}
+              <div className="mb-6">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-3">
+                  Upload Your CSV File
+                </h3>
+                <div className="flex items-center gap-4">
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={handleFileUpload}
+                    ref={fileInputRef}
+                    className="hidden"
+                  />
+                  <Button
+                    onClick={() => fileInputRef.current?.click()}
+                    variant="secondary"
+                    icon={<FileText className="w-4 h-4" />}
+                  >
+                    Choose CSV File
+                  </Button>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    or
+                  </span>
+                  <Button
+                    onClick={downloadSampleCSV}
+                    variant="secondary"
+                    icon={<Download className="w-4 h-4" />}
+                  >
+                    Download Template
+                  </Button>
+                </div>
+              </div>
+
+              {/* CSV Preview */}
+              {csvData && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-3">
+                    CSV Preview
+                  </h3>
+                  <textarea
+                    value={csvData}
+                    onChange={(e) => setCsvData(e.target.value)}
+                    className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-3 font-mono"
+                    rows={6}
+                    placeholder="Your CSV content will appear here..."
+                  />
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                 <Button
                   onClick={() => {
                     setShowBulkUpload(false);

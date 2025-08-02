@@ -78,7 +78,7 @@ const ShiftFormPage = () => {
     } else {
       setShowCustomStaff(false);
       setCustomStaff("");
-      const selectedStaff = staff.find((s) => s.id === staffValue);
+      const selectedStaff = staff.find((s) => s.id === staffValue && s.systemRole === "staff");
       if (selectedStaff) {
         setFormData((prev) => ({
           ...prev,
@@ -103,8 +103,8 @@ const ShiftFormPage = () => {
         // Refresh staff list to get the new staff member with ID
         await fetchStaff();
 
-        // Find the newly added staff member
-        const newStaffMember = staff.find((s) => s.name === customStaff.trim());
+        // Find the newly added staff member (should have 'staff' role)
+        const newStaffMember = staff.find((s) => s.name === customStaff.trim() && s.systemRole === "staff");
         if (newStaffMember) {
           setFormData((prev) => ({
             ...prev,
@@ -124,7 +124,7 @@ const ShiftFormPage = () => {
   const handleRoomSelection = (selectedRoomIds: string[]) => {
     const selectedRooms = selectedRoomIds
       .map((roomId) => {
-        const room = rooms.find((r) => r.id === roomId);
+        const room = rooms.find((r) => r.id === roomId && r.status !== "Occupied");
         return room ? room.number : "";
       })
       .filter(Boolean);
@@ -273,12 +273,14 @@ const ShiftFormPage = () => {
                   value={showCustomStaff ? "custom" : formData.staffId}
                   onChange={handleStaffSelection}
                   options={[
-                    ...staff.map((staffMember) => ({
-                      value: staffMember.id,
-                      label: `${staffMember.name}${
-                        staffMember.jobRole ? ` (${staffMember.jobRole})` : ""
-                      }`,
-                    })),
+                    ...staff
+                      .filter((staffMember) => staffMember.systemRole === "staff")
+                      .map((staffMember) => ({
+                        value: staffMember.id,
+                        label: `${staffMember.name}${
+                          staffMember.jobRole ? ` (${staffMember.jobRole})` : ""
+                        }`,
+                      })),
                     { value: "custom", label: "+ Add New Staff Member" },
                   ]}
                   placeholder="Select staff member"
@@ -356,12 +358,14 @@ const ShiftFormPage = () => {
                 <DropdownCheckBox
                   id="rooms"
                   label="Rooms"
-                  options={rooms.map((room) => ({
-                    value: room.id,
-                    label: `${room.number}${
-                      room.type ? ` (${room.type})` : ""
-                    }${room.status ? ` - ${room.status}` : ""}`,
-                  }))}
+                  options={rooms
+                    .filter((room) => room.status !== "Occupied")
+                    .map((room) => ({
+                      value: room.id,
+                      label: `${room.number}${
+                        room.type ? ` (${room.type})` : ""
+                      }${room.status ? ` - ${room.status}` : ""}`,
+                    }))}
                   selectedValues={formData.roomIds}
                   onChange={handleRoomSelection}
                   placeholder="Select rooms to clean"
@@ -379,11 +383,14 @@ const ShiftFormPage = () => {
                   </div>
                 )}
 
-                {rooms.length === 0 && (
+                {rooms.filter((room) => room.status !== "Occupied").length === 0 && (
                   <div className="mt-2 sm:mt-3 p-2 sm:p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl">
                     <p className="text-xs sm:text-sm text-yellow-800 dark:text-yellow-200 flex items-center gap-2">
                       <AlertCircle className="w-3 h-3 sm:w-4 sm:h-4" />
-                      No rooms available. Add rooms in Room Management first.
+                      {rooms.length === 0 
+                        ? "No rooms available. Add rooms in Room Management first."
+                        : "No available rooms for assignment. All rooms are currently occupied."
+                      }
                     </p>
                   </div>
                 )}

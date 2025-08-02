@@ -242,6 +242,12 @@ const Navbar = ({
           showGreeting: false,
           showFilters: false,
         };
+      case "/settings":
+        return {
+          title: "Settings",
+          showGreeting: false,
+          showFilters: false,
+        };
       default:
         return { title: "Dashboard", showGreeting: true };
     }
@@ -522,13 +528,14 @@ const Navbar = ({
                 )}
               </div>
 
-              <button
+              <Link
+                to="/settings"
                 onClick={() => setShowUserDropdown(false)}
                 className="w-full text-left px-4 py-2 text-gray-300 hover:text-white hover:bg-[#2A3441] transition-colors flex items-center gap-2"
               >
                 <Settings className="w-4 h-4" />
                 Settings
-              </button>
+              </Link>
 
               <button
                 onClick={handleLogout}

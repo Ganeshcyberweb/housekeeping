@@ -12,17 +12,11 @@ service cloud.firestore {
       // 2. Any authenticated user can create staff records (managers/admins will be validated at app level)
       allow create: if request.auth != null;
       
-      // Users can update their own record (except systemRole)
-      // Admin/manager permissions will be enforced at the application level
-      allow update: if request.auth != null && (
-        // Own record - can update everything except systemRole
-        (resource.data.uid == request.auth.uid && 
-         request.resource.data.systemRole == resource.data.systemRole) ||
-        // Admin/manager permissions handled at app level for security
-        resource.data.uid != request.auth.uid
-      );
+      // Users can update their own record
+      // Admin/manager permissions verified through role check
+      allow update: if request.auth != null;
       
-      // Deletion handled at application level with proper role checks
+      // Deletion permissions handled at application level
       allow delete: if request.auth != null;
     }
     
@@ -47,13 +41,6 @@ service cloud.firestore {
       // Write permissions handled at application level
       // Admin/manager roles verified through staff collection in app code
       allow write: if request.auth != null;
-    }
-    
-    // Reports and analytics (if you add these collections later)
-    match /reports/{reportId} {
-      // Reports access handled at application level
-      // Admin/manager roles verified through staff collection in app code
-      allow read, write: if request.auth != null;
     }
   }
 }

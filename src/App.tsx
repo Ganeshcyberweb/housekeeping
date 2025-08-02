@@ -4,6 +4,7 @@ import AdminPage from "./pages/AdminPage";
 import AdminShiftManagementPage from "./pages/AdminShiftManagementPage";
 import AdminStaffManagementPage from "./pages/AdminStaffManagementPage";
 import AdminRoomManagementPage from "./pages/AdminRoomManagementPage";
+import SettingsPage from "./pages/SettingsPage";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import UnauthorizedPage from "./pages/UnauthorizedPage";
@@ -77,6 +78,14 @@ function App() {
                   <AdminRoomManagementPage />
                 </MainLayout>
               </RoleBasedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <MainLayout>
+                <SettingsPage />
+              </MainLayout>
             }
           />
         </Routes>

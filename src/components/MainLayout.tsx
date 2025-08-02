@@ -51,7 +51,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
   };
 
   const handleBulkUpload = () => {
-    fileInputRef.current?.click();
+    setShowBulkUpload(true);
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {

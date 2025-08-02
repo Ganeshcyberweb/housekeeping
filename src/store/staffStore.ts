@@ -154,8 +154,22 @@ export const useStaffStore = create<StaffStore>((set) => ({
   updateStaff: async (id, updates) => {
     set({ error: null });
     try {
+      console.log("=== STAFF UPDATE DEBUG ===");
+      console.log("1. Staff ID:", id);
+      console.log("2. Updates:", JSON.stringify(updates, null, 2));
+      
+      // Check authentication status
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+      console.log("3. Current user:", currentUser ? {
+        uid: currentUser.uid,
+        email: currentUser.email,
+        emailVerified: currentUser.emailVerified
+      } : "No user logged in");
+
       const now = Timestamp.now();
       const staffDoc = doc(db, "staff", id);
+      console.log("4. Document reference:", staffDoc.path);
 
       // Build update data, handling field deletion properly
       const updateData: any = {
@@ -174,7 +188,11 @@ export const useStaffStore = create<StaffStore>((set) => ({
         // Skip if undefined (don't update the field)
       });
 
+      console.log("5. Final update data:", JSON.stringify(updateData, null, 2));
+      console.log("6. Attempting to update document in Firestore...");
+
       await updateDoc(staffDoc, updateData);
+      console.log("7. Document updated successfully!");
 
       // For local state update, we need to handle deleted fields
       const localUpdates: any = { updatedAt: now };
@@ -193,8 +211,18 @@ export const useStaffStore = create<StaffStore>((set) => ({
         ),
       }));
     } catch (error) {
+      console.log("=== STAFF UPDATE ERROR ===");
+      console.error("Error details:", {
+        message: (error as any)?.message,
+        code: (error as any)?.code,
+        stack: (error as any)?.stack,
+        fullError: error,
+        staffId: id,
+        updates
+      });
+      console.log("=== END STAFF UPDATE ERROR ===");
+      
       set({ error: "Failed to update staff member" });
-      console.error("Error updating staff:", error);
       throw error;
     }
   },
@@ -270,15 +298,40 @@ export const useStaffStore = create<StaffStore>((set) => ({
   deleteStaff: async (id) => {
     set({ error: null });
     try {
+      console.log("=== STAFF DELETE DEBUG ===");
+      console.log("1. Staff ID to delete:", id);
+      
+      // Check authentication status
+      const auth = getAuth();
+      const currentUser = auth.currentUser;
+      console.log("2. Current user:", currentUser ? {
+        uid: currentUser.uid,
+        email: currentUser.email,
+        emailVerified: currentUser.emailVerified
+      } : "No user logged in");
+
       const staffDoc = doc(db, "staff", id);
+      console.log("3. Document reference:", staffDoc.path);
+      console.log("4. Attempting to delete document from Firestore...");
+      
       await deleteDoc(staffDoc);
+      console.log("5. Document deleted successfully!");
 
       set((state) => ({
         staff: state.staff.filter((staff) => staff.id !== id),
       }));
     } catch (error) {
+      console.log("=== STAFF DELETE ERROR ===");
+      console.error("Error details:", {
+        message: (error as any)?.message,
+        code: (error as any)?.code,
+        stack: (error as any)?.stack,
+        fullError: error,
+        staffId: id
+      });
+      console.log("=== END STAFF DELETE ERROR ===");
+      
       set({ error: "Failed to delete staff member" });
-      console.error("Error deleting staff:", error);
       throw error;
     }
   },

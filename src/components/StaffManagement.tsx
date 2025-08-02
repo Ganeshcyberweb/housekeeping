@@ -29,7 +29,16 @@ const StaffManagement = ({
   showAddStaffModal: externalShowAddStaffModal,
   setShowAddStaffModal: externalSetShowAddStaffModal,
 }: StaffManagementProps = {}) => {
-  const { isAdmin } = useAuth();
+  const { hasPermission, userProfile, user, isAdmin } = useAuth();
+
+  // Debug logs for auth state
+  console.log("[StaffManagement] Auth Debug:", {
+    hasManageStaffPermission: hasPermission("canManageStaff"),
+    userProfile,
+    userRole: userProfile?.role,
+    firebaseUser: user?.uid,
+    timestamp: new Date().toISOString(),
+  });
   const {
     staff,
     error: staffError,
@@ -108,11 +117,18 @@ const StaffManagement = ({
   const handleAddStaff = async () => {
     if (!newStaff.name.trim()) return;
 
+    console.log("[StaffManagement] Adding staff:", {
+      staffData: newStaff,
+      userCanManageStaff: hasPermission("canManageStaff"),
+      currentUser: user?.uid,
+      userRole: userProfile?.role,
+    });
+
     try {
       const staffData: any = {
         name: newStaff.name.trim(),
-        systemRole: newStaff.systemRole || 'staff', // Default to 'staff' if not specified
-        availability: 'Available', // Default availability
+        systemRole: newStaff.systemRole || "staff", // Default to 'staff' if not specified
+        availability: "Available", // Default availability
         // uid is optional - only for Firebase Auth linked users
         // email is optional - only for Firebase Auth linked users
         // createdAt and updatedAt will be added by the store
@@ -133,7 +149,12 @@ const StaffManagement = ({
       setShowAddStaffModal(false);
     } catch (err) {
       // Error is handled in the store
-      console.error('Error in handleAddStaff:', err);
+      console.error("[StaffManagement] Error in handleAddStaff:", {
+        error: err,
+        staffData: newStaff,
+        userAuth: user?.uid,
+        userRole: userProfile?.role,
+      });
     }
   };
 
@@ -144,6 +165,15 @@ const StaffManagement = ({
   const handleSaveStaffEdit = async (updates: Partial<Staff>) => {
     if (!editingStaff) return;
 
+    console.log("[StaffManagement] Saving staff edit:", {
+      staffId: editingStaff.id,
+      updates,
+      editingStaff,
+      userCanManageStaff: hasPermission("canManageStaff"),
+      currentUser: user?.uid,
+      userRole: userProfile?.role,
+    });
+
     try {
       const cleanUpdates: any = {
         name: updates.name?.trim(),
@@ -151,7 +181,7 @@ const StaffManagement = ({
         phone: updates.phone?.trim() || "", // Pass empty string to delete field
       };
 
-      // Only admins can update systemRole
+      // Only admins can update systemRole (managers cannot)
       if (isAdmin() && updates.systemRole) {
         cleanUpdates.systemRole = updates.systemRole;
       }
@@ -160,6 +190,13 @@ const StaffManagement = ({
       setEditingStaff(null);
     } catch (err) {
       // Error is handled in the store
+      console.error("[StaffManagement] Error in handleSaveStaffEdit:", {
+        error: err,
+        staffId: editingStaff.id,
+        updates,
+        userAuth: user?.uid,
+        userRole: userProfile?.role,
+      });
     }
   };
 
@@ -194,16 +231,36 @@ const StaffManagement = ({
         setAssignedShiftsCount(0);
       } catch (err) {
         // Error is handled in the store
+        console.error("[StaffManagement] Error in handleConfirmDelete:", {
+          error: err,
+          staffToDelete: staffToDelete?.id,
+          shiftsCount: assignedShiftsCount,
+          userAuth: user?.uid,
+          userRole: userProfile?.role,
+        });
       }
     }
   };
 
   const handleDeleteStaff = async (staffId: string) => {
+    console.log("[StaffManagement] Deleting staff:", {
+      staffId,
+      userCanManageStaff: hasPermission("canManageStaff"),
+      currentUser: user?.uid,
+      userRole: userProfile?.role,
+    });
+
     try {
       await deleteStaff(staffId);
       setDeletingStaff(null);
     } catch (err) {
       // Error is handled in the store
+      console.error("[StaffManagement] Error in handleDeleteStaff:", {
+        error: err,
+        staffId,
+        userAuth: user?.uid,
+        userRole: userProfile?.role,
+      });
     }
   };
 
@@ -403,9 +460,19 @@ const StaffManagement = ({
             },
           ]}
           data={filteredStaff}
-          onEditAction={(row) => handleEditStaff(row)}
+          onEditAction={(row) => {
+            console.log("[StaffManagement] Edit action clicked:", {
+              staffId: row.id,
+              staffData: row,
+              userCanManageStaff: hasPermission("canManageStaff"),
+              userRole: userProfile?.role,
+            });
+            handleEditStaff(row);
+          }}
           onDeleteAction={
-            isAdmin() ? (row) => handleDeleteStaffClick(row) : undefined
+            hasPermission("canManageStaff")
+              ? (row) => handleDeleteStaffClick(row)
+              : undefined
           }
         />
       )}
