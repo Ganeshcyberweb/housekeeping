@@ -66,15 +66,15 @@ const Navbar = ({
     useState(false);
   const [showAutoAssignConfirm, setShowAutoAssignConfirm] = useState(false);
   const [autoAssignConfig, setAutoAssignConfig] = useState({
-    date: new Date().toISOString().split('T')[0], // Today's date
+    date: new Date().toISOString().split("T")[0], // Today's date
     shift: (() => {
       // Determine default shift based on current time
       const currentHour = new Date().getHours();
-      if (currentHour >= 14 && currentHour < 22) return 'Afternoon';
-      else if (currentHour >= 22 || currentHour < 6) return 'Evening';
-      return 'Morning';
+      if (currentHour >= 14 && currentHour < 22) return "Afternoon";
+      else if (currentHour >= 22 || currentHour < 6) return "Evening";
+      return "Morning";
     })(),
-    maxRooms: 5
+    maxRooms: 5,
   });
   const [currentAvailability, setCurrentAvailability] = useState<
     "Available" | "On Break" | "Busy" | "Off Duty"
@@ -95,14 +95,6 @@ const Navbar = ({
           const staffMember = getStaffByUid(user.uid);
           if (staffMember && staffMember.availability) {
             setCurrentAvailability(staffMember.availability);
-            console.log(
-              "Loaded availability from Firestore:",
-              staffMember.availability
-            );
-          } else {
-            console.log(
-              "Staff member not found or no availability set, using default"
-            );
           }
         } catch (error) {
           console.error("Failed to fetch staff data for availability:", error);
@@ -169,18 +161,11 @@ const Navbar = ({
     setShowAutoAssignConfirm(false);
 
     try {
-      const result = await autoAssignShifts({
+      await autoAssignShifts({
         date: autoAssignConfig.date,
         shiftType: autoAssignConfig.shift,
         maxAssignmentsPerStaff: autoAssignConfig.maxRooms,
       });
-
-      if (result.success) {
-        // Success feedback will be handled by the store and UI
-        console.log(
-          `Auto assignment completed: ${result.successCount} shifts created`
-        );
-      }
     } catch (error) {
       console.error("Auto assignment failed:", error);
     }
@@ -568,10 +553,7 @@ const Navbar = ({
                     className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
                   >
                     <Clock className="w-4 h-4" />
-                    <span className="hidden sm:inline">
-                      {currentAvailability}
-                    </span>
-                    <span className="sm:hidden">Status</span>
+                    <span className="text-sm">{currentAvailability}</span>
                     <ChevronDown
                       className={`w-3 h-3 transition-transform ${
                         showAvailabilityDropdown ? "rotate-180" : ""
@@ -580,7 +562,7 @@ const Navbar = ({
                   </button>
 
                   {showAvailabilityDropdown && (
-                    <div className="absolute top-full right-0 mt-2 bg-[#1C2333] rounded-lg shadow-lg py-2 min-w-[160px] z-50 border border-gray-700">
+                    <div className="absolute top-full right-0 sm:right-0 left-0 sm:left-auto mt-2 bg-[#1C2333] rounded-lg shadow-lg py-2 min-w-[160px] z-50 border border-gray-700">
                       {["Available", "On Break", "Busy", "Off Duty"].map(
                         (status) => (
                           <button
@@ -872,7 +854,8 @@ const Navbar = ({
 
               <div className="mb-6 space-y-4">
                 <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  Configure the assignment settings and automatically assign available staff to rooms.
+                  Configure the assignment settings and automatically assign
+                  available staff to rooms.
                 </p>
 
                 {/* Date Input */}
@@ -883,7 +866,12 @@ const Navbar = ({
                   <input
                     type="date"
                     value={autoAssignConfig.date}
-                    onChange={(e) => setAutoAssignConfig({...autoAssignConfig, date: e.target.value})}
+                    onChange={(e) =>
+                      setAutoAssignConfig({
+                        ...autoAssignConfig,
+                        date: e.target.value,
+                      })
+                    }
                     className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5"
                     required
                   />
@@ -896,7 +884,12 @@ const Navbar = ({
                   </label>
                   <select
                     value={autoAssignConfig.shift}
-                    onChange={(e) => setAutoAssignConfig({...autoAssignConfig, shift: e.target.value})}
+                    onChange={(e) =>
+                      setAutoAssignConfig({
+                        ...autoAssignConfig,
+                        shift: e.target.value,
+                      })
+                    }
                     className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5"
                     required
                   >
@@ -916,7 +909,12 @@ const Navbar = ({
                     min="1"
                     max="20"
                     value={autoAssignConfig.maxRooms}
-                    onChange={(e) => setAutoAssignConfig({...autoAssignConfig, maxRooms: parseInt(e.target.value) || 1})}
+                    onChange={(e) =>
+                      setAutoAssignConfig({
+                        ...autoAssignConfig,
+                        maxRooms: parseInt(e.target.value) || 1,
+                      })
+                    }
                     className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm rounded-lg focus:ring-purple-500 focus:border-purple-500 block w-full p-2.5"
                     placeholder="5"
                     required
@@ -939,7 +937,11 @@ const Navbar = ({
                   variant="primary"
                   icon={<Zap className="w-4 h-4" />}
                   className="bg-purple-600 hover:bg-purple-700 focus:ring-purple-500"
-                  disabled={!autoAssignConfig.date || !autoAssignConfig.shift || autoAssignConfig.maxRooms < 1}
+                  disabled={
+                    !autoAssignConfig.date ||
+                    !autoAssignConfig.shift ||
+                    autoAssignConfig.maxRooms < 1
+                  }
                 >
                   Start Assignment
                 </Button>

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
 import type { UserRole } from "../types/user";
+import LoadingScreen from "./LoadingScreen";
 
 interface RoleBasedRouteProps {
   children: ReactNode;
@@ -12,26 +13,32 @@ interface RoleBasedRouteProps {
 export default function RoleBasedRoute({ 
   children, 
   allowedRoles, 
-  fallbackPath = "/unauthorized" 
+  fallbackPath = "/" 
 }: RoleBasedRouteProps) {
-  const { user, userProfile, loading } = useAuth();
+  const { user, userProfile, loading, error } = useAuth();
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
+    return <LoadingScreen message="Verifying access..." />;
   }
 
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  if (!userProfile || !allowedRoles.includes(userProfile.role)) {
+  // Check for archived user error first, before checking userProfile
+  if (error === 'Account no longer exists') {
+    return <Navigate to="/user-not-found" replace />;
+  }
+
+  if (!userProfile) {
+    return <Navigate to={fallbackPath} replace />;
+  }
+
+  if (!userProfile.approved) {
+    return <Navigate to="/pending-approval" replace />;
+  }
+
+  if (!allowedRoles.includes(userProfile.role)) {
     return <Navigate to={fallbackPath} replace />;
   }
 

@@ -5,11 +5,9 @@ import {
   getDocs,
   doc,
   updateDoc,
-  deleteDoc,
   deleteField,
   Timestamp,
 } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
 import { db } from "../lib/firebase";
 
 export interface Staff {
@@ -21,6 +19,10 @@ export interface Staff {
   jobRole?: string; // For operational duties (cleaner, supervisor, etc.)
   availability?: "Available" | "On Break" | "Busy" | "Off Duty"; // Current availability status
   phone?: string;
+  approved: boolean; // Whether the user is approved by admin
+  approvedBy?: string; // UID of admin who approved
+  approvedAt?: Timestamp; // When the user was approved
+  archived: boolean; // Whether the staff member has been archived (soft deleted)
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
@@ -31,7 +33,9 @@ interface StaffStore {
   error: string | null;
   fetchStaff: () => Promise<void>;
   addStaff: (
-    staffData: Partial<Omit<Staff, "id" | "createdAt" | "updatedAt">> & { name: string }
+    staffData: Partial<Omit<Staff, "id" | "createdAt" | "updatedAt">> & {
+      name: string;
+    }
   ) => Promise<void>;
   updateStaff: (
     id: string,
@@ -42,7 +46,10 @@ interface StaffStore {
     availability: Staff["availability"]
   ) => Promise<void>;
   deleteStaff: (id: string) => Promise<void>;
+  approveStaff: (id: string, approvedByUid: string) => Promise<void>;
+  disapproveStaff: (id: string) => Promise<void>;
   getStaffByUid: (uid: string) => Staff | null;
+  getPendingApprovalStaff: () => Staff[];
   clearError: () => void;
 }
 
@@ -54,18 +61,17 @@ export const useStaffStore = create<StaffStore>((set) => ({
   fetchStaff: async () => {
     set({ loading: true, error: null });
     try {
-      console.log("Fetching staff data...");
       const staffCollection = collection(db, "staff");
       const snapshot = await getDocs(staffCollection);
-      const staffList = snapshot.docs.map((doc) => ({
+      const allStaffList = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       })) as Staff[];
 
-      console.log("Fetched", staffList.length, "staff members");
+      // Filter out archived staff
+      const staffList = allStaffList.filter((staff) => !staff.archived);
 
       set({ staff: staffList, loading: false });
-      console.log("Staff data loaded successfully");
     } catch (error) {
       set({ error: "Failed to fetch staff members", loading: false });
       console.error("Error fetching staff:", error);
@@ -76,27 +82,16 @@ export const useStaffStore = create<StaffStore>((set) => ({
   addStaff: async (staffData) => {
     set({ error: null });
     try {
-      console.log("=== STAFF CREATION DEBUG ===");
-      console.log("1. Input staff data:", JSON.stringify(staffData, null, 2));
-      
-      // Check authentication status
-      const auth = getAuth();
-      const currentUser = auth.currentUser;
-      console.log("2. Current user:", currentUser ? {
-        uid: currentUser.uid,
-        email: currentUser.email,
-        emailVerified: currentUser.emailVerified
-      } : "No user logged in");
-
       const now = Timestamp.now();
       const staffCollection = collection(db, "staff");
-      console.log("3. Collection reference created:", staffCollection.path);
 
       // Prepare staff data with proper defaults and required fields
       const preparedStaffData: any = {
         name: staffData.name,
-        systemRole: staffData.systemRole || 'staff',
-        availability: staffData.availability || 'Available',
+        systemRole: staffData.systemRole || "staff",
+        availability: staffData.availability || "Available",
+        approved: staffData.approved !== undefined ? staffData.approved : false,
+        archived: false,
         createdAt: now,
         updatedAt: now,
       };
@@ -105,25 +100,20 @@ export const useStaffStore = create<StaffStore>((set) => ({
       if (staffData.uid) {
         preparedStaffData.uid = staffData.uid;
       }
-      
+
       if (staffData.email && staffData.email.trim()) {
         preparedStaffData.email = staffData.email.trim();
       }
-      
+
       if (staffData.jobRole && staffData.jobRole.trim()) {
         preparedStaffData.jobRole = staffData.jobRole.trim();
       }
-      
+
       if (staffData.phone && staffData.phone.trim()) {
         preparedStaffData.phone = staffData.phone.trim();
       }
 
-      console.log("4. Prepared staff data:", JSON.stringify(preparedStaffData, null, 2));
-      console.log("5. Attempting to create document in Firestore...");
-
       const docRef = await addDoc(staffCollection, preparedStaffData);
-
-      console.log("6. SUCCESS: Staff document created with ID:", docRef.id);
 
       const newStaff: Staff = {
         id: docRef.id,
@@ -133,19 +123,14 @@ export const useStaffStore = create<StaffStore>((set) => ({
       set((state) => ({
         staff: [...state.staff, newStaff],
       }));
-      
-      console.log("7. SUCCESS: Staff added to local state");
-      console.log("=== END STAFF CREATION DEBUG ===");
     } catch (error: any) {
-      console.log("=== STAFF CREATION ERROR ===");
       console.error("Error details:", {
         message: error?.message,
         code: error?.code,
         stack: error?.stack,
-        fullError: error
+        fullError: error,
       });
-      console.log("=== END STAFF CREATION ERROR ===");
-      
+
       set({ error: "Failed to add staff member" });
       throw error;
     }
@@ -154,22 +139,8 @@ export const useStaffStore = create<StaffStore>((set) => ({
   updateStaff: async (id, updates) => {
     set({ error: null });
     try {
-      console.log("=== STAFF UPDATE DEBUG ===");
-      console.log("1. Staff ID:", id);
-      console.log("2. Updates:", JSON.stringify(updates, null, 2));
-      
-      // Check authentication status
-      const auth = getAuth();
-      const currentUser = auth.currentUser;
-      console.log("3. Current user:", currentUser ? {
-        uid: currentUser.uid,
-        email: currentUser.email,
-        emailVerified: currentUser.emailVerified
-      } : "No user logged in");
-
       const now = Timestamp.now();
       const staffDoc = doc(db, "staff", id);
-      console.log("4. Document reference:", staffDoc.path);
 
       // Build update data, handling field deletion properly
       const updateData: any = {
@@ -188,11 +159,7 @@ export const useStaffStore = create<StaffStore>((set) => ({
         // Skip if undefined (don't update the field)
       });
 
-      console.log("5. Final update data:", JSON.stringify(updateData, null, 2));
-      console.log("6. Attempting to update document in Firestore...");
-
       await updateDoc(staffDoc, updateData);
-      console.log("7. Document updated successfully!");
 
       // For local state update, we need to handle deleted fields
       const localUpdates: any = { updatedAt: now };
@@ -211,17 +178,15 @@ export const useStaffStore = create<StaffStore>((set) => ({
         ),
       }));
     } catch (error) {
-      console.log("=== STAFF UPDATE ERROR ===");
       console.error("Error details:", {
         message: (error as any)?.message,
         code: (error as any)?.code,
         stack: (error as any)?.stack,
         fullError: error,
         staffId: id,
-        updates
+        updates,
       });
-      console.log("=== END STAFF UPDATE ERROR ===");
-      
+
       set({ error: "Failed to update staff member" });
       throw error;
     }
@@ -230,8 +195,6 @@ export const useStaffStore = create<StaffStore>((set) => ({
   updateAvailability: async (uid, availability) => {
     set({ error: null });
     try {
-      console.log("Updating availability for UID:", uid, "to:", availability);
-
       // First, try to find the staff member in local state
       let staffMember = useStaffStore
         .getState()
@@ -239,9 +202,6 @@ export const useStaffStore = create<StaffStore>((set) => ({
 
       // If not found in local state, fetch staff data first
       if (!staffMember) {
-        console.log(
-          "Staff member not found in local state, fetching staff data..."
-        );
         await useStaffStore.getState().fetchStaff();
         staffMember = useStaffStore
           .getState()
@@ -250,9 +210,6 @@ export const useStaffStore = create<StaffStore>((set) => ({
 
       // If still not found, try to find by querying Firestore directly
       if (!staffMember) {
-        console.log(
-          "Staff member still not found, querying Firestore directly..."
-        );
         const staffCollection = collection(db, "staff");
         const staffSnapshot = await getDocs(staffCollection);
         const staffList = staffSnapshot.docs.map((doc) => ({
@@ -265,14 +222,10 @@ export const useStaffStore = create<StaffStore>((set) => ({
         if (!staffMember) {
           throw new Error(`Staff member with UID ${uid} not found in database`);
         }
-
-        console.log("Found staff member in direct query:", staffMember);
       }
 
       const now = Timestamp.now();
       const staffDoc = doc(db, "staff", staffMember.id);
-
-      console.log("Updating Firestore document:", staffMember.id);
 
       // Update availability in Firestore
       await updateDoc(staffDoc, {
@@ -286,8 +239,6 @@ export const useStaffStore = create<StaffStore>((set) => ({
           staff.uid === uid ? { ...staff, availability, updatedAt: now } : staff
         ),
       }));
-
-      console.log("Availability updated successfully:", availability);
     } catch (error) {
       set({ error: "Failed to update availability" });
       console.error("Error updating availability:", error);
@@ -298,40 +249,88 @@ export const useStaffStore = create<StaffStore>((set) => ({
   deleteStaff: async (id) => {
     set({ error: null });
     try {
-      console.log("=== STAFF DELETE DEBUG ===");
-      console.log("1. Staff ID to delete:", id);
-      
-      // Check authentication status
-      const auth = getAuth();
-      const currentUser = auth.currentUser;
-      console.log("2. Current user:", currentUser ? {
-        uid: currentUser.uid,
-        email: currentUser.email,
-        emailVerified: currentUser.emailVerified
-      } : "No user logged in");
-
       const staffDoc = doc(db, "staff", id);
-      console.log("3. Document reference:", staffDoc.path);
-      console.log("4. Attempting to delete document from Firestore...");
-      
-      await deleteDoc(staffDoc);
-      console.log("5. Document deleted successfully!");
+      const now = Timestamp.now();
+
+      await updateDoc(staffDoc, {
+        archived: true,
+        updatedAt: now,
+      });
 
       set((state) => ({
         staff: state.staff.filter((staff) => staff.id !== id),
       }));
     } catch (error) {
-      console.log("=== STAFF DELETE ERROR ===");
       console.error("Error details:", {
         message: (error as any)?.message,
         code: (error as any)?.code,
         stack: (error as any)?.stack,
         fullError: error,
-        staffId: id
+        staffId: id,
       });
-      console.log("=== END STAFF DELETE ERROR ===");
-      
+
       set({ error: "Failed to delete staff member" });
+      throw error;
+    }
+  },
+
+  approveStaff: async (id, approvedByUid) => {
+    set({ error: null });
+    try {
+      const staffDoc = doc(db, "staff", id);
+      const now = Timestamp.now();
+
+      await updateDoc(staffDoc, {
+        approved: true,
+        approvedBy: approvedByUid,
+        approvedAt: now,
+        updatedAt: now,
+      });
+
+      set((state) => ({
+        staff: state.staff.map((staff) =>
+          staff.id === id
+            ? {
+                ...staff,
+                approved: true,
+                approvedBy: approvedByUid,
+                approvedAt: now,
+                updatedAt: now,
+              }
+            : staff
+        ),
+      }));
+    } catch (error) {
+      set({ error: "Failed to approve staff member" });
+      console.error("Error approving staff:", error);
+      throw error;
+    }
+  },
+
+  disapproveStaff: async (id) => {
+    set({ error: null });
+    try {
+      const staffDoc = doc(db, "staff", id);
+      const now = Timestamp.now();
+
+      await updateDoc(staffDoc, {
+        archived: true,
+        updatedAt: now,
+      });
+
+      set((state) => ({
+        staff: state.staff.filter((staff) => staff.id !== id),
+      }));
+    } catch (error) {
+      console.error("Error details:", {
+        message: (error as any)?.message,
+        code: (error as any)?.code,
+        stack: (error as any)?.stack,
+        fullError: error,
+        staffId: id,
+      });
+
+      set({ error: "Failed to disapprove staff member" });
       throw error;
     }
   },
@@ -339,6 +338,13 @@ export const useStaffStore = create<StaffStore>((set) => ({
   getStaffByUid: (uid: string): Staff | null => {
     const state = useStaffStore.getState();
     return state.staff.find((staff: Staff) => staff.uid === uid) || null;
+  },
+
+  getPendingApprovalStaff: (): Staff[] => {
+    const state = useStaffStore.getState();
+    return state.staff.filter(
+      (staff: Staff) => !staff.approved && !staff.archived
+    );
   },
 
   clearError: () => set({ error: null }),

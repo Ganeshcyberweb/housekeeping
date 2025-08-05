@@ -174,9 +174,6 @@ export class AutoAssignmentService {
           availableStaff.length
       );
 
-    console.log("Current staff workload:", Object.fromEntries(staffWorkload));
-    console.log("Max assignments per staff:", maxAssignments);
-
     // Find the minimum workload level
     const workloadLevels = Array.from(staffWorkload.values()).sort(
       (a, b) => a - b
@@ -232,9 +229,6 @@ export class AutoAssignmentService {
           staffWorkload.set(selectedStaff.id, newWorkload);
 
           assigned = true;
-          console.log(
-            `Assigned room ${room.number} to ${selectedStaff.name} (new workload: ${newWorkload})`
-          );
         } else {
           // No staff available at current workload level, try next level
           currentWorkloadLevel++;
@@ -393,8 +387,6 @@ export class AutoAssignmentService {
     config: AutoAssignmentConfig
   ): Promise<AutoAssignmentResult> {
     try {
-      console.log("Starting workload-aware auto assignment process...", config);
-
       // Step 1: Fetch available staff, assignable rooms, and existing shifts
       const [availableStaff, assignableRooms, existingShifts] =
         await Promise.all([
@@ -402,10 +394,6 @@ export class AutoAssignmentService {
           this.getAssignableRooms(),
           this.getExistingShifts(config.date, config.shiftType),
         ]);
-
-      console.log(
-        `Found ${availableStaff.length} available staff, ${assignableRooms.length} assignable rooms, and ${existingShifts.length} existing shifts`
-      );
 
       // Step 2: Create workload-aware assignments
       const assignments = this.createWorkloadAwareAssignments(
@@ -415,14 +403,9 @@ export class AutoAssignmentService {
         config.maxAssignmentsPerStaff
       );
 
-      console.log(
-        `Created ${assignments.length} shift assignments using workload-aware algorithm`
-      );
-
       // Step 3: Save assignments to database
       const result = await this.saveAssignments(assignments, config);
 
-      console.log("Workload-aware auto assignment completed:", result);
       return result;
     } catch (error) {
       console.error("Auto assignment failed:", error);

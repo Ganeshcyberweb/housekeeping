@@ -8,6 +8,10 @@ export interface AuthContextType {
   loading: boolean;
   error: string | null;
   signIn: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (email: string, password: string, displayName: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  sendEmailVerification: () => Promise<void>;
   signOut: () => Promise<void>;
   clearError: () => void;
   hasRole: (roles: UserRole[]) => boolean;

@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
-import NavbarBlack from './NavbarBlack';
+import React, { useState, useRef } from "react";
+import { useLocation } from "react-router-dom";
+import NavbarBlack from "./Navbar";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -8,22 +8,22 @@ interface MainLayoutProps {
 
 const MainLayout = ({ children }: MainLayoutProps) => {
   const location = useLocation();
-  
+
   // Room Management states
-  const [roomSearchFilter, setRoomSearchFilter] = useState('');
+  const [roomSearchFilter, setRoomSearchFilter] = useState("");
   const [showAddRoomModal, setShowAddRoomModal] = useState(false);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
-  const [csvData, setCsvData] = useState('');
+  const [csvData, setCsvData] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Staff Management states
-  const [staffSearchFilter, setStaffSearchFilter] = useState('');
+  const [staffSearchFilter, setStaffSearchFilter] = useState("");
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
 
   // Shift Management states
-  const [dateFilter, setDateFilter] = useState('');
-  const [shiftFilter, setShiftFilter] = useState('');
-  const [staffFilter, setStaffFilter] = useState('');
+  const [dateFilter, setDateFilter] = useState("");
+  const [shiftFilter, setShiftFilter] = useState("");
+  const [staffFilter, setStaffFilter] = useState("");
 
   const handleFilterChange = (filters: {
     dateFilter?: string;
@@ -42,9 +42,9 @@ const MainLayout = ({ children }: MainLayoutProps) => {
     }
     if (filters.searchFilter !== undefined) {
       // Set search filter based on current route
-      if (location.pathname === '/admin/room-management') {
+      if (location.pathname === "/admin/room-management") {
         setRoomSearchFilter(filters.searchFilter);
-      } else if (location.pathname === '/admin/staff-management') {
+      } else if (location.pathname === "/admin/staff-management") {
         setStaffSearchFilter(filters.searchFilter);
       }
     }
@@ -56,7 +56,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file && file.type === 'text/csv') {
+    if (file && file.type === "text/csv") {
       const reader = new FileReader();
       reader.onload = (e) => {
         const text = e.target?.result as string;
@@ -77,11 +77,11 @@ const MainLayout = ({ children }: MainLayoutProps) => {
 
   const getCurrentFilters = () => {
     switch (location.pathname) {
-      case '/admin/room-management':
+      case "/admin/room-management":
         return { searchFilter: roomSearchFilter };
-      case '/admin/staff-management':
+      case "/admin/staff-management":
         return { searchFilter: staffSearchFilter };
-      case '/admin/shift-management':
+      case "/admin/shift-management":
         return { dateFilter, shiftFilter, staffFilter };
       default:
         return {};
@@ -106,7 +106,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
       />
       {React.cloneElement(children as React.ReactElement, {
         // Pass props to page components based on route
-        ...(location.pathname === '/admin/room-management' && {
+        ...(location.pathname === "/admin/room-management" && {
           searchFilter: roomSearchFilter,
           showAddRoomModal,
           setShowAddRoomModal,
@@ -119,14 +119,14 @@ const MainLayout = ({ children }: MainLayoutProps) => {
           onBulkUpload: handleBulkUpload,
           onAddRoom: handleAddRoom,
         }),
-        ...(location.pathname === '/admin/staff-management' && {
+        ...(location.pathname === "/admin/staff-management" && {
           searchFilter: staffSearchFilter,
           showAddStaffModal,
           setShowAddStaffModal,
           onFilterChange: handleFilterChange,
           onAddStaff: handleAddStaff,
         }),
-        ...(location.pathname === '/admin/shift-management' && {
+        ...(location.pathname === "/admin/shift-management" && {
           dateFilter,
           shiftFilter,
           staffFilter,

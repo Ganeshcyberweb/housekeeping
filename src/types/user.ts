@@ -5,6 +5,9 @@ export interface UserProfile {
   email: string;
   displayName: string;
   role: UserRole;
+  approved: boolean;
+  approvedBy?: string;
+  approvedAt?: any;
   createdAt: any;
   updatedAt: any;
 }
