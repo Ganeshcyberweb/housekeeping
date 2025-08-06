@@ -424,51 +424,6 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* Recent Activity */}
-              <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 sm:p-6 shadow-sm">
-                <div className="flex items-center justify-between mb-4 sm:mb-6">
-                  <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                    <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
-                    Recent Activity
-                  </h2>
-                </div>
-
-                {recentShifts.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                    {recentShifts.map((shift, index) => (
-                      <div
-                        key={shift.id || index}
-                        className="p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 rounded-xl"
-                      >
-                        <div className="flex items-start gap-2 sm:gap-3">
-                          <div className="w-2 h-2 bg-green-500 rounded-full mt-1.5 sm:mt-2 flex-shrink-0"></div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">
-                              Shift assigned to {shift.staffName || "Unknown"}
-                            </p>
-                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                              {shift.shift} on{" "}
-                              {new Date(shift.date).toLocaleDateString()}
-                            </p>
-                            <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                              {shift.rooms?.length || 0} room
-                              {shift.rooms?.length !== 1 ? "s" : ""}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-6 sm:py-8">
-                    <Activity className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-2 sm:mb-3" />
-                    <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
-                      No recent activity
-                    </p>
-                  </div>
-                )}
-              </div>
-
               {/* Recent Activity - only for admin/manager */}
               <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 sm:p-6 shadow-sm">
                 <div className="flex items-center justify-between mb-4 sm:mb-6">
