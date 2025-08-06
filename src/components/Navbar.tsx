@@ -482,11 +482,17 @@ const Navbar = ({
                 {user?.email || "user@example.com"}
               </p>
             </div>
-            <img
-              src={user?.photoURL || "https://i.pravatar.cc/40"}
-              alt="user"
-              className="w-7 h-7 sm:w-9 sm:h-9 rounded-full border border-gray-500"
-            />
+            {user?.photoURL ? (
+              <img
+                src={user.photoURL}
+                alt="user"
+                className="w-7 h-7 sm:w-9 sm:h-9 rounded-full border border-gray-500"
+              />
+            ) : (
+              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-full border border-gray-500 bg-gray-600 flex items-center justify-center">
+                <User className="w-4 h-4 sm:w-5 sm:h-5 text-gray-300" />
+              </div>
+            )}
             <ChevronDown
               className={`w-3 h-3 sm:w-4 sm:h-4 text-gray-400 transition-transform ${
                 showUserDropdown ? "rotate-180" : ""

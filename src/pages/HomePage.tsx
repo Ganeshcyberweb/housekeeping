@@ -1,6 +1,7 @@
 import { useAuth } from "../context/useAuth";
 import { Link } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import Button from "../components/ui/Button";
 import { useShiftsStore } from "../store/shiftsStore";
 import { useStaffStore } from "../store/staffStore";
 import { useRoomStore } from "../store/roomStore";
@@ -14,13 +15,26 @@ import {
   Activity,
   UserCheck,
   Bell,
+  AlertCircle,
+  ChevronDown,
+  ChevronUp,
+  Check,
+  X,
 } from "lucide-react";
 
 export default function Home() {
-  const { user, loading, userProfile } = useAuth();
+  const { user, loading, userProfile, isAdmin } = useAuth();
   const { shifts, fetchShifts } = useShiftsStore();
-  const { fetchStaff } = useStaffStore();
+  const { fetchStaff, getPendingApprovalStaff, approveStaff, disapproveStaff } =
+    useStaffStore();
   const { fetchRooms } = useRoomStore();
+
+  // State for pending approvals
+  const [showPendingApprovals, setShowPendingApprovals] = useState(false);
+  const [approvingStaff, setApprovingStaff] = useState<string | null>(null);
+  const [disapprovingStaff, setDisapprovingStaff] = useState<string | null>(
+    null
+  );
 
   // Fetch data when component mounts
   useEffect(() => {
@@ -36,6 +50,41 @@ export default function Home() {
 
     fetchData();
   }, [user, userProfile, fetchShifts, fetchStaff, fetchRooms]);
+
+  // Handler functions for staff approval
+  const handleApproveStaff = async (staffId: string) => {
+    if (!user?.uid) return;
+
+    setApprovingStaff(staffId);
+    try {
+      await approveStaff(staffId, user.uid);
+    } catch (err) {
+      console.error("[HomePage] Error approving staff:", err);
+    } finally {
+      setApprovingStaff(null);
+    }
+  };
+
+  const handleDisapproveStaff = async (staffId: string) => {
+    setDisapprovingStaff(staffId);
+    try {
+      await disapproveStaff(staffId);
+    } catch (err) {
+      console.error("[HomePage] Error disapproving staff:", err);
+    } finally {
+      setDisapprovingStaff(null);
+    }
+  };
+
+  const formatCreatedAt = (timestamp: any) => {
+    return timestamp.toDate().toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
 
   // Calculate analytics
   const today = new Date().toISOString().split("T")[0];
@@ -251,6 +300,98 @@ export default function Home() {
           ) : (
             // Admin/Manager dashboard - original content
             <>
+              {/* Pending Approvals Section */}
+              {isAdmin() && getPendingApprovalStaff().length > 0 && (
+                <div className="mb-8">
+                  <div className="bg-stone-50 dark:bg-yellow-900/20 border border-stone-200 dark:border-yellow-800 rounded-lg p-6">
+                    <button
+                      onClick={() =>
+                        setShowPendingApprovals(!showPendingApprovals)
+                      }
+                      className="flex items-center justify-between w-full mb-4 hover:bg-stone-100 dark:hover:bg-yellow-900/30 rounded-lg p-2 -m-2 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="w-5 h-5" />
+                        <h3 className="text-lg font-semibold">
+                          Pending Approvals ({getPendingApprovalStaff().length})
+                        </h3>
+                      </div>
+                      {showPendingApprovals ? (
+                        <ChevronUp className="w-4 h-4" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4" />
+                      )}
+                    </button>
+                    {showPendingApprovals && (
+                      <>
+                        <p className="text-sm mb-4">
+                          The following staff members are waiting for admin
+                          approval to access the system:
+                        </p>
+                        <div className="space-y-3">
+                          {getPendingApprovalStaff().map((pendingStaff) => (
+                            <div
+                              key={pendingStaff.id}
+                              className="flex flex-col sm:flex-row sm:items-center sm:justify-between bg-white dark:bg-gray-800 rounded-lg p-4 border border-stone-100 dark:border-yellow-700 gap-3 sm:gap-0"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div>
+                                  <div className="font-medium text-gray-900 dark:text-white">
+                                    {pendingStaff.name}
+                                  </div>
+                                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                                    {pendingStaff.email} •{" "}
+                                    {pendingStaff.systemRole}
+                                    {pendingStaff.jobRole &&
+                                      ` • ${pendingStaff.jobRole}`}
+                                  </div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-500">
+                                    Registered:{" "}
+                                    {formatCreatedAt(pendingStaff.createdAt)}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center justify-end gap-2 w-full sm:w-auto">
+                                <Button
+                                  onClick={() => handleApproveStaff(pendingStaff.id)}
+                                  disabled={
+                                    approvingStaff === pendingStaff.id ||
+                                    disapprovingStaff === pendingStaff.id
+                                  }
+                                  variant="default"
+                                  size="sm"
+                                  icon={<Check className="w-4 h-4" />}
+                                  title="Approve"
+                                >
+                                  {approvingStaff === pendingStaff.id
+                                    ? "Approving..."
+                                    : "Approve"}
+                                </Button>
+                                <Button
+                                  onClick={() => handleDisapproveStaff(pendingStaff.id)}
+                                  disabled={
+                                    disapprovingStaff === pendingStaff.id ||
+                                    approvingStaff === pendingStaff.id
+                                  }
+                                  variant="default"
+                                  size="sm"
+                                  icon={<X className="w-4 h-4" />}
+                                  title="Disapprove"
+                                >
+                                  {disapprovingStaff === pendingStaff.id
+                                    ? "Disapproving..."
+                                    : "Deny"}
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Main Dashboard Content */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
                 {/* Today's Schedule */}
