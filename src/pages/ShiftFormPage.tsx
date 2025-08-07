@@ -27,7 +27,7 @@ const ShiftFormPage = () => {
   const { user } = useAuth();
   const { fetchShifts } = useShiftsStore();
   const { staff, fetchStaff, addStaff } = useStaffStore();
-  const { rooms, fetchRooms } = useRoomStore();
+  const { rooms, fetchRooms, addRoom } = useRoomStore();
   const [formData, setFormData] = useState<ShiftFormData>({
     date: "",
     shift: "",
@@ -42,8 +42,8 @@ const ShiftFormPage = () => {
   const [, setSuccess] = useState(false);
   const [customStaff, setCustomStaff] = useState("");
   const [showCustomStaff, setShowCustomStaff] = useState(false);
-  // We'll use rooms directly from database, no need for custom room functionality
-  // since users can add rooms in the Room Management section
+  const [customRoom, setCustomRoom] = useState("");
+  const [showCustomRoom, setShowCustomRoom] = useState(false);
 
   // Fetch staff and rooms data on component mount
   useEffect(() => {
@@ -121,6 +121,37 @@ const ShiftFormPage = () => {
     }
   };
 
+  const handleCustomRoomSubmit = async () => {
+    if (customRoom.trim()) {
+      try {
+        // Add the new room to the database
+        await addRoom({
+          number: customRoom.trim(),
+          status: "Available",
+        });
+
+        // Refresh rooms list to get the new room with ID
+        await fetchRooms();
+
+        // Find the newly added room and add it to selection
+        const newRoom = rooms.find((r) => r.number === customRoom.trim());
+        if (newRoom) {
+          // Add to current selection
+          setFormData((prev) => ({
+            ...prev,
+            roomIds: [...prev.roomIds, newRoom.id],
+            rooms: [...prev.rooms, newRoom.number],
+          }));
+        }
+
+        setShowCustomRoom(false);
+        setCustomRoom("");
+      } catch (err) {
+        setError("Failed to add new room");
+      }
+    }
+  };
+
   const handleRoomSelection = (selectedRoomIds: string[]) => {
     const selectedRooms = selectedRoomIds
       .map((roomId) => {
@@ -147,6 +178,12 @@ const ShiftFormPage = () => {
       return; // The form will be resubmitted after staff is added
     }
 
+    // Handle custom room if not yet added
+    if (showCustomRoom && customRoom.trim()) {
+      await handleCustomRoomSubmit();
+      return; // The form will be resubmitted after room is added
+    }
+
     // Validate with the form data
     if (!formData.date) {
       setError("Date is required");
@@ -164,8 +201,6 @@ const ShiftFormPage = () => {
       setError("At least one room must be selected");
       return;
     }
-
-    // No need for custom room handling
 
     setLoading(true);
     setError(null);
@@ -194,6 +229,8 @@ const ShiftFormPage = () => {
       });
       setCustomStaff("");
       setShowCustomStaff(false);
+      setCustomRoom("");
+      setShowCustomRoom(false);
 
       // Refresh the shifts store to update admin dashboard
       fetchShifts();
@@ -307,6 +344,7 @@ const ShiftFormPage = () => {
                       </div>
                       <div className="flex gap-2">
                         <Button
+                          type="button"
                           variant="primary"
                           size="sm"
                           onClick={handleCustomStaffSubmit}
@@ -315,6 +353,7 @@ const ShiftFormPage = () => {
                           Add
                         </Button>
                         <Button
+                          type="button"
                           variant="secondary"
                           size="sm"
                           onClick={() => {
@@ -370,6 +409,64 @@ const ShiftFormPage = () => {
                   onChange={handleRoomSelection}
                   placeholder="Select rooms to clean"
                 />
+
+                <div className="mt-3">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setShowCustomRoom(true)}
+                    icon={<Plus className="w-3 h-3 sm:w-4 sm:h-4" />}
+                  >
+                    <span className="hidden sm:inline">Add Custom Room</span>
+                    <span className="sm:hidden">Add Room</span>
+                  </Button>
+                </div>
+
+                {showCustomRoom && (
+                  <div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-gray-50 dark:bg-gray-700 rounded-xl">
+                    <h4 className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white mb-2 sm:mb-3">
+                      Add New Room
+                    </h4>
+                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                      <div className="flex-1">
+                        <Input
+                          id="custom-room"
+                          label=""
+                          value={customRoom}
+                          onChange={setCustomRoom}
+                          placeholder="Enter room number (e.g., Room 106)"
+                          onKeyDown={(e) =>
+                            e.key === "Enter" && handleCustomRoomSubmit()
+                          }
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="primary"
+                          size="sm"
+                          onClick={handleCustomRoomSubmit}
+                          icon={<Plus className="w-3 h-3" />}
+                        >
+                          Add
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => {
+                            setShowCustomRoom(false);
+                            setCustomRoom("");
+                          }}
+                          icon={<X className="w-3 h-3" />}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {formData.rooms.length > 0 && (
                   <div className="mt-2 sm:mt-3 p-2 sm:p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">

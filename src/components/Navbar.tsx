@@ -682,7 +682,7 @@ const Navbar = ({
                   )}
 
                   {/* Staff Management Page - Add Staff Member */}
-                  {location.pathname === "/admin/staff-management" && (
+                  {location.pathname === "/admin/staff-management" && hasPermission("canManageStaff") && (
                     <Button
                       onClick={onAddStaff}
                       variant="primary"

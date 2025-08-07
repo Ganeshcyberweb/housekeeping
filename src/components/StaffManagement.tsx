@@ -18,6 +18,10 @@ import {
   ChevronUp,
   Check,
   X,
+  Clock,
+  Coffee,
+  UserCheck,
+  UserX,
 } from "lucide-react";
 
 interface StaffManagementProps {
@@ -502,8 +506,55 @@ const StaffManagement = ({
               key: "name",
               header: "Name",
               render: (value) => (
-                <div className="font-medium text-gray-900">{value}</div>
+                <div className="font-medium text-gray-900 dark:text-white truncate max-w-32" title={value}>
+                  {value}
+                </div>
               ),
+            },
+            {
+              key: "availability",
+              header: "Availability",
+              render: (value) => {
+                const getAvailabilityIcon = (availability: string) => {
+                  switch (availability) {
+                    case "Available":
+                      return <UserCheck className="w-3 h-3" />;
+                    case "On Break":
+                      return <Coffee className="w-3 h-3" />;
+                    case "Busy":
+                      return <Clock className="w-3 h-3" />;
+                    case "Off Duty":
+                      return <UserX className="w-3 h-3" />;
+                    default:
+                      return <UserCheck className="w-3 h-3" />;
+                  }
+                };
+                
+                const getAvailabilityVariant = (availability: string) => {
+                  switch (availability) {
+                    case "Available":
+                      return "success";
+                    case "On Break":
+                      return "warning";
+                    case "Busy":
+                      return "danger";
+                    case "Off Duty":
+                      return "default";
+                    default:
+                      return "success";
+                  }
+                };
+                
+                return (
+                  <Tag 
+                    variant={getAvailabilityVariant(value || "Available")}
+                    className="flex items-center gap-1"
+                  >
+                    {getAvailabilityIcon(value || "Available")}
+                    {value || "Available"}
+                  </Tag>
+                );
+              },
             },
             {
               key: "jobRole",
@@ -563,9 +614,11 @@ const StaffManagement = ({
             },
           ]}
           data={filteredStaff}
-          onEditAction={(row) => {
-            handleEditStaff(row);
-          }}
+          onEditAction={
+            hasPermission("canManageStaff")
+              ? (row) => handleEditStaff(row)
+              : undefined
+          }
           onDeleteAction={
             hasPermission("canManageStaff")
               ? (row) => handleDeleteStaffClick(row)

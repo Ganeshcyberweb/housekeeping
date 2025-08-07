@@ -52,7 +52,7 @@ export const getRolePermissions = (role: UserRole): RolePermissions => {
         canDeleteShifts: true,
         canViewReports: true,
         canViewAllStaff: true,
-        canManageStaff: true,
+        canManageStaff: false,
         canManageRooms: true,
         canViewOwnShiftsOnly: false,
       };

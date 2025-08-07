@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { type Shift } from "../store/shiftsStore";
+import { useStaffStore, type Staff } from "../store/staffStore";
+import { useRoomStore } from "../store/roomStore";
 import {
   type ShiftFormData,
   SHIFT_TYPES,
-  STAFF_LIST,
-  ROOM_LIST,
 } from "../constants/shiftConstants";
 import Select from "./Select";
 import Input from "./Input";
@@ -35,13 +35,34 @@ const EditModal: React.FC<EditModalProps> = ({
   onClose,
   onSave,
 }) => {
+  const { staff, fetchStaff } = useStaffStore();
+  const { rooms, fetchRooms, addRoom } = useRoomStore();
   const [formData, setFormData] = useState<Partial<ShiftFormData>>({});
   const [loading, setLoading] = useState(false);
   const [customStaff, setCustomStaff] = useState("");
   const [showCustomStaff, setShowCustomStaff] = useState(false);
   const [customRoom, setCustomRoom] = useState("");
   const [showCustomRoom, setShowCustomRoom] = useState(false);
-  const [roomList, setRoomList] = useState([...ROOM_LIST]);
+
+  // Get approved staff members with 'staff' role
+  const availableStaff = staff.filter(
+    (staffMember: Staff) => 
+      staffMember.approved && 
+      staffMember.systemRole === "staff" && 
+      !staffMember.archived
+  );
+
+  useEffect(() => {
+    if (staff.length === 0) {
+      fetchStaff();
+    }
+  }, [staff.length, fetchStaff]);
+
+  useEffect(() => {
+    if (rooms.length === 0) {
+      fetchRooms();
+    }
+  }, [rooms.length, fetchRooms]);
 
   useEffect(() => {
     if (shift) {
@@ -71,7 +92,18 @@ const EditModal: React.FC<EditModalProps> = ({
     } else {
       setShowCustomStaff(false);
       setCustomStaff("");
-      setFormData((prev) => ({ ...prev, staffId: staffValue, staffName: staffValue }));
+      // Find the selected staff member to get both ID and name
+      const selectedStaff = availableStaff.find(s => s.id === staffValue);
+      if (selectedStaff) {
+        setFormData((prev) => ({ 
+          ...prev, 
+          staffId: selectedStaff.id, 
+          staffName: selectedStaff.name 
+        }));
+      } else {
+        // Fallback for backward compatibility
+        setFormData((prev) => ({ ...prev, staffId: staffValue, staffName: staffValue }));
+      }
     }
   };
 
@@ -82,25 +114,53 @@ const EditModal: React.FC<EditModalProps> = ({
     }
   };
 
-  const handleAddCustomRoom = () => {
+  const handleAddCustomRoom = async () => {
     if (customRoom.trim() && !formData.rooms?.includes(customRoom.trim())) {
-      // Add to room list if not exists
-      if (!roomList.includes(customRoom.trim())) {
-        setRoomList((prev) => [...prev, customRoom.trim()]);
+      try {
+        // Add the new room to the database
+        await addRoom({
+          number: customRoom.trim(),
+          status: "Available",
+        });
+
+        // Refresh rooms list to get the new room with ID
+        await fetchRooms();
+
+        // Find the newly added room and add it to selection
+        const newRoom = rooms.find((r) => r.number === customRoom.trim());
+        if (newRoom) {
+          // Add to current selection
+          setFormData((prev) => ({
+            ...prev,
+            rooms: [...(prev.rooms || []), newRoom.number],
+            roomIds: [...(prev.roomIds || []), newRoom.id],
+          }));
+        }
+
+        setCustomRoom("");
+        setShowCustomRoom(false);
+      } catch (error) {
+        console.error("Failed to add custom room:", error);
+        // Still add it locally as fallback (existing behavior)
+        setFormData((prev) => ({
+          ...prev,
+          rooms: [...(prev.rooms || []), customRoom.trim()],
+          roomIds: [...(prev.roomIds || []), customRoom.trim()],
+        }));
+        setCustomRoom("");
+        setShowCustomRoom(false);
       }
-      // Add to selected rooms
-      setFormData((prev) => ({
-        ...prev,
-        rooms: [...(prev.rooms || []), customRoom.trim()],
-        roomIds: [...(prev.roomIds || []), customRoom.trim()],
-      }));
-      setCustomRoom("");
-      setShowCustomRoom(false);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Handle custom room if not yet added
+    if (showCustomRoom && customRoom.trim()) {
+      await handleAddCustomRoom();
+      return; // The form will be resubmitted after room is added
+    }
 
     if (
       !formData.date ||
@@ -121,19 +181,9 @@ const EditModal: React.FC<EditModalProps> = ({
         ? customStaff.trim()
         : formData.staffName;
 
-    // Auto-add custom room if they entered a name but didn't click "Add"
-    const actualRooms =
-      showCustomRoom &&
-      customRoom.trim() &&
-      !formData.rooms?.includes(customRoom.trim())
-        ? [...(formData.rooms || []), customRoom.trim()]
-        : formData.rooms || [];
-    const actualRoomIds =
-      showCustomRoom &&
-      customRoom.trim() &&
-      !formData.roomIds?.includes(customRoom.trim())
-        ? [...(formData.roomIds || []), customRoom.trim()]
-        : formData.roomIds || [];
+    // Use the current form data for rooms (custom room would have been added above if needed)
+    const actualRooms = formData.rooms || [];
+    const actualRoomIds = formData.roomIds || [];
 
     setLoading(true);
     try {
@@ -216,9 +266,9 @@ const EditModal: React.FC<EditModalProps> = ({
                 value={showCustomStaff ? "custom" : formData.staffId || ""}
                 onChange={handleStaffSelection}
                 options={[
-                  ...STAFF_LIST.map((staff) => ({
-                    value: staff,
-                    label: staff,
+                  ...availableStaff.map((staffMember: Staff) => ({
+                    value: staffMember.id,
+                    label: staffMember.name,
                   })),
                   { value: "custom", label: "+ Add Custom Staff Member" },
                 ]}
@@ -242,6 +292,7 @@ const EditModal: React.FC<EditModalProps> = ({
                   </div>
                   <div className="flex gap-2">
                     <Button
+                      type="button"
                       variant="primary"
                       size="sm"
                       onClick={handleCustomStaffSubmit}
@@ -250,6 +301,7 @@ const EditModal: React.FC<EditModalProps> = ({
                       Add
                     </Button>
                     <Button
+                      type="button"
                       variant="secondary"
                       size="sm"
                       onClick={() => {
@@ -280,16 +332,31 @@ const EditModal: React.FC<EditModalProps> = ({
               <DropdownCheckBox
                 id="edit-rooms"
                 label=""
-                options={roomList.map((room) => ({ value: room, label: room }))}
-                selectedValues={formData.rooms || []}
-                onChange={(selectedRooms) =>
-                  setFormData((prev) => ({ ...prev, rooms: selectedRooms, roomIds: selectedRooms }))
-                }
+                options={rooms.map((room) => ({ 
+                  value: room.id, 
+                  label: `${room.number}${room.type ? ` (${room.type})` : ""}${room.status ? ` - ${room.status}` : ""}` 
+                }))}
+                selectedValues={formData.roomIds || []}
+                onChange={(selectedRoomIds) => {
+                  const selectedRooms = selectedRoomIds
+                    .map((roomId) => {
+                      const room = rooms.find((r) => r.id === roomId);
+                      return room ? room.number : "";
+                    })
+                    .filter(Boolean);
+                  
+                  setFormData((prev) => ({ 
+                    ...prev, 
+                    rooms: selectedRooms, 
+                    roomIds: selectedRoomIds 
+                  }));
+                }}
                 placeholder="Select rooms"
               />
 
               <div className="mt-3">
                 <Button
+                  type="button"
                   variant="secondary"
                   size="sm"
                   onClick={() => setShowCustomRoom(true)}
@@ -316,6 +383,7 @@ const EditModal: React.FC<EditModalProps> = ({
                   </div>
                   <div className="flex gap-2">
                     <Button
+                      type="button"
                       variant="primary"
                       size="sm"
                       onClick={handleAddCustomRoom}
@@ -324,6 +392,7 @@ const EditModal: React.FC<EditModalProps> = ({
                       Add
                     </Button>
                     <Button
+                      type="button"
                       variant="secondary"
                       size="sm"
                       onClick={() => {
