@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "housekeeping-shift-planner",
+  "private_key_id": "b07612d5b578f0e3fa21dd8146b7143598cab10a",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCiT9qHBqlSKaD0\n2xGNrAIdZkVRPxdvrlzq8518gl0cSOWXWpsTZgi3MEeZg9ov5xqkTuLY1uTirvB0\n+Yib1XsZXEMLOggtdEIwJtej2BT4e+iYn40JOfFOrb3ZMo2dJlawIKM4qyIaZv+K\nMXPHzeu2PFIKcgGpbme56JCJOUpKBSfuLiP0LpwLu4PW7Ay0yhE6vhnlofSUwxfx\nTAyLi3YvTsM3Wj+dFtXU9z9r2wrPK74eDsH3HHKkyDCEschTyv4A7v7JrqHqiIc7\nyXu8vwQ5g+P61jTmm1nK4BGznH9gGIRjuY3UEhZYtL3eJH84b+Kv7F7i1/GDaxL+\nLtwZD7JJAgMBAAECggEAIPAqjRc1ejZ3cukX9VOQNE4iR/wRMflE4usgLPm5knla\nmi3pZXTh1OcHyKgAuZLhDbHyiAWH+lZ89ogDCHi4m+tksZ0Ltsmuet4PCbFahBiF\nGZ/bO6GWDhzk93QyV89FbUWaSfA0of3/4pfpgoUPzfIMxhDftHXyt7/xwN8u67kw\nNfgfVQf+6NTwI88mpV6ppv57H07pJVh0n/wCxcEvN/B+jeI0oygNEXxIDOHi5HBM\nOaMxD+CngC6CMX85HTxbcNZBQWrypF5N/BxbXfylsVhAArrpSyf3X8hsp1CmG1vE\nxMPqC5Dqoae2iWratQxwzyG7pObePeC53/rDyLbSbwKBgQDaMZ4j3qFYigmzLP4W\nCv32XbL8BNKQGoyhjc7NbXXkqKTlReyGFeUVkrF6diZDU45ywGb+E9+jlK3QwtB2\nBXZZU4bQllIog5jo+eqfdAEGPc5RUR8/zGnQa3YzlbgFL9W+TRvAwnRdtoYpKPgq\niFPy2+gUeHP7l9vwQvMJZvTeKwKBgQC+b35Lk0AE7B1g0ElxzDfIVL1jPF3apCAJ\nwkmFHF83DdgVZEgN6Hb5o5QNwXnEQJ9omygwi8ku8c4fRgtZZmRqD5dvQiZppoQW\nXLJlZYw6+6Sbmrsf1V1AChjP3jYkW5emLFDi5bq+o0XDLnjLYM+IAhaK+7WaEc6k\ncgScvdqrWwKBgBT+pTrKVzgPwDMvZxtz30/vYCODy0b2ZwW8gWOe3rMrzwIIomOc\ng7h5rv4blD7yMUi1XrOf8erpiXgG5swUZnjd4qD7ddhUIUh5k6vYG6kgFVQZvCoF\nX0EgtfTsuRI2shhnjv4TN+M0huA7AvYEvB8oLcKafH5+9DjAGGaVM4aVAoGBALPn\nrn+FL5C24xYoD4pTLEu0Smqqh9va+21cv4niAM2I5Z9n6m5BM8yozWCla/yMNExl\nb/VUyY3w4BJJYMVnZuuPqTdxXcqnhdd+YQZLhcvfGWXrKmZrcjnikAgoXCvC36Qb\n75o6/03D/07h4zn3TnelyVgpbSmNMxPFpzfQX/lLAoGBAKmtzXm0kTo1oiheg/0c\nFD4xUGtFiLCGC7tDYKIlv0CdISrSWN1QeoU4XaBibi9ne1Mls96E2VeMr9RyWF4u\n1I9FcgCJ3Nv1JNdVJ4LfoGb3M7QuKbt0jAQeIiDD3nWj6jliBDjnMRqRQGrinMGS\nAJkCtldjNSdhrUtGiJbIFuIJ\n-----END PRIVATE KEY-----\n",
+  "client_email": "firebase-adminsdk-fbsvc@housekeeping-shift-planner.iam.gserviceaccount.com",
+  "client_id": "110843389005766581807",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40housekeeping-shift-planner.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
