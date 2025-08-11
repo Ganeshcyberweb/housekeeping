@@ -3,6 +3,6 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
-  base: "/housekeeping/",   // <-- required for GitHub Pages project site
+  base: "/",                 // <-- use "/" on Render
   plugins: [react(), tailwindcss()],
 });
