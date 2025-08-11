@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "vite build",
+    "build:gh": "vite build --base=/housekeeping/",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -32,10 +33,7 @@
     "typescript-eslint": "^8.35.1",
     "vite": "^7.0.4"
   },
-{
-  "scripts": {
-    "build": "vite build",                       // Render
-    "build:gh": "vite build --base=/housekeeping/" // GitHub Pages
+  "engines": {
+    "node": ">=18"
   }
 }
-
