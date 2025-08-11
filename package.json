@@ -32,4 +32,10 @@
     "typescript-eslint": "^8.35.1",
     "vite": "^7.0.4"
   }
+{
+  "scripts": {
+    "build": "vite build",                       // Render
+    "build:gh": "vite build --base=/housekeeping/" // GitHub Pages
+  }
 }
+
